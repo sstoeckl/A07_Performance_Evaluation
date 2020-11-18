@@ -1,0 +1,41 @@
+---
+title: "Portfoliomanagement and Financial Analysis - Assignment 7"
+subtitle: "Submit until Monday 2020-11-23, 13:00"
+author: "Lastname, Surname"
+output: html_notebook
+---
+  
+```{r setup}
+#remotes::install_github("braverock/FactorAnalytics",  build_vignettes = TRUE, force = TRUE)
+pacman::p_load(tidyverse,tidyquant,FFdownload,FactorAnalytics,PerformanceAnalytics)
+```
+
+**Please** remember to put your assignment solutions in `rmd` format using **many** chunks and putting readable text in between, similar to my examples given in Research Methods and Assignment 1!
+
+For all exercises: Please use the Assignment-Forum to post your questions, I will try my best to help you along!
+
+## Exercise 1: Analysing the CAPM
+
+In this exercise we want to estimate the CAPM. Please read carefully through the two documents provided (right hand side: files). Then we start to collect the necessary data:
+  
+a) From Datastream get the last 10 years of data from the 100 stocks of the S&P100 using the list `LS&P100I` (S&P 100): total return index (RI) and market cap (MV)
+b) Further import the Fama-French-Factors from Kenneth Frenchs homepage (monthly, e.g. using `FFdownload`). From both datasets we select data for the last (available) 60 months, calculate returns (simple percentage) for the US-Stocks and eliminate those stocks that have NAs for this period.
+c) Now subtract the risk-free rate from all the stocks. Then estimate each stocks beta with the market: Regress all stock excess returns on the market excess return and save all betas (optimally use `mutate` and `map` in combination with `lm`). Estimate the mean-return for each stock and plot the return/beta-combinations. Create the security market line and include it in the plot! What do you find?
+d) In a next step (following both documents), we sort the stocks according to their beta and build ten value-weighted portfolios (with more or less the same number of stocks). Repeat a) for the ten portfolios. What do you observe?
+e) In the third step you follow page 6-8 of the second document and estimate the second-pass regression with the market and then market & idiosyncratic risk. What do you observe? Present all your results in a similar fashion as in the document.
+
+## Exercise 2: Performance Evaluation I
+
+Read Chapter 24 of our book. In this exercise use a Minimum Variance and a Tangecy (maxium Sharpe Ratio) portfolio calculate from your stocks, as well as the S&P500 as a benchmark (Period 2000-01-01 - 2020-01-11). For all three Investment Opportunities imagine you invest 100USD per month into the portfolio. What is the overall return this investment provides you? How much should you have investd at the bginning (one-time investment) to get the eact same overall wealth at the end of 2020? Can you plot both wealth developments over time?
+
+## Exercise 3: Performance Evaluation II
+
+For the same two portfolios and the appropriate benchmark calculate overall performance measures (Sharpe ratio, M2 [assume a risk-fre rate of 0], Treynor Ratio, Jensen's Alpha and Information ratio). Interpret. Additional do the two market timing regressions (ch 24.4) and see whether your portfolios can "time" the market.
+
+## Exercise 4: Active Portfolio Management
+
+Work through trough the demo `demo(relative_ranking)`. Use what you lear here, form an appropriate opinion on the ranking of your assets and optimize a Minimum Variance and Maximum Sharpe ratio Portfolio. Which one performs better?
+
+
+
+
