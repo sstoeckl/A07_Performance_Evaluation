@@ -1,7 +1,7 @@
 ---
 title: "Portfoliomanagement and Financial Analysis - Assignment 7"
 subtitle: "Submit until Monday 2020-11-23, 13:00"
-author: "Lastname, Surname"
+author: "Köffel, Fabian"
 output: html_notebook
 ---
   
@@ -26,7 +26,157 @@ e) In the third step you follow page 6-8 of the second document and estimate the
 
 ## Exercise 2: Performance Evaluation I
 
-Read Chapter 24 of our book. In this exercise use a Minimum Variance and a Tangecy (maxium Sharpe Ratio) portfolio calculate from your stocks, as well as the S&P500 as a benchmark (Period 2000-01-01 - 2020-01-11). For all three Investment Opportunities imagine you invest 100USD per month into the portfolio. What is the overall return this investment provides you? How much should you have investd at the bginning (one-time investment) to get the eact same overall wealth at the end of 2020? Can you plot both wealth developments over time?
+Read Chapter 24 of our book. In this exercise use a Minimum Variance and a Tangecy (Maxium Sharpe Ratio) portfolio calculate from your stocks, as well as the S&P500 as a benchmark (Period 2000-01-01 - 2020-01-11). For all three Investment Opportunities imagine you invest 100USD per month into the portfolio. What is the overall return this investment provides you? How much should you have invested at the beginning (one-time investment) to get the exact same overall wealth at the end of 2020? Can you plot both wealth developments over time?
+
+First of all, I am going to download all the crucial data, which we need in order to create the three portfolios. My personal stock choice are Apple, Nividia, Microsoft, American Express, Walmart, Bank of America, Morgan Stanley, Disney, Exxon Mobile. As the benchmark we take the S&p500, regarding to the underling task. 
+```{r Choosing my personal set of stocks}
+library(timetk,PortfolioAnalytics)
+SP500 <- tq_index("SP500")
+stock_names <- c("AAPL", "NVDA", "MSFT", "AXP", "WMT", "BAC", "GS","MS", "DIS", "XOM")
+```
+
+```{r Return Calculation of the stocks}
+stock_returns <-tq_get(x = stock_names,get  = "stock.prices", from = "2000-01-01", to   = "2020-11-18") %>%
+    group_by(symbol) %>%
+    tq_transmute(select     = adjusted, 
+                 mutate_fun = periodReturn, 
+                 period     = "daily")
+unique(stock_returns$symbol)
+
+stock_returns_xts <- stock_returns %>%
+                      subset( select = c(symbol,date, daily.returns)) %>% 
+                      pivot_wider(names_from = symbol, 
+                                  values_from = daily.returns) %>% 
+                      tk_xts(date_var = date, silent = TRUE)
+stock_returns_xts
+```
+```{r Maximum Return}
+port <- portfolio.spec(assets=stock_names)%>%
+  add.constraint(type="full_investment") %>% #In our approach we use full_investment as our task it is
+  add.constraint(type="long_only") %>% #We do not take any short-selling
+  add.objective(type="return", name="mean")
+port
+```
+
+Now I defined the investment constrains for our investments, which is based on our task a full investment constrained, due to the fact that we would like to be fully invested the whole period. The long only constrain comes from the idea that we are just caring about the upper part of the efficient frontier, in order to construct the tangency portfolio, which is the __most efficient__ way to set our 10 stocks together concerning the faced risked. So, in order words the tangency portfolio maximizes the Sharpe Ratio. The second portfolio we have to construct is the Minimum-Variance Portfolio. The _"third"_ portfolio would be an absolute passive strategy we would just invest in the SP500.
+
+```{r }
+opt_port <- optimize.portfolio(R=stock_returns_xts, portfolio=port,
+                                 optimize_method="ROI", trace=TRUE)
+opt_port
+```
+So, as we see we would make the most money if we would just everything in Nividia. However, we do not look for the maximum return, we look for the maximum return in relation to the taken risk.
+
+```{r}
+plot(opt_port, chart.assets=TRUE, main="Maximum Return", 
+      xlim=c(0, 0.045), ylim=c(0,0.005))
+```
+```{r Risk Reward trade of}
+chart.RiskReward(opt_port,return.col="mean", risk.col="sd",
+                 chart.assets=TRUE, 
+                 xlim=c(0.01, 0.04),
+                 main="Maximum Return")
+```
+
+```{r}
+frontier <- create.EfficientFrontier(R=stock_returns_xts, 
+                                       portfolio=port, 
+                                       type="mean-StdDev")
+
+chart.EfficientFrontier(frontier, match.col="StdDev", type="l",rf = 0, tangent.line = TRUE, chart.assets = TRUE,)
+```
+The efficient frontier is the set of optimal portfolios that offer the highest expected return for a defined level of risk or the lowest risk for a given level of expected return. Portfolios that lie below the efficient frontier are sub-optimal because they do not provide enough return for the level of risk.
+
+```{r Tangency Portfolio}
+port_tan <- portfolio.spec(assets=stock_names) %>%
+  add.constraint(type="full_investment") %>%
+  add.constraint(type = "long_only") %>%
+  add.objective(type="return", name="mean")
+port_minvar
+```
+
+The Minmimum Variance Portfolio minimizing the variance of the portfolio
+```{r Minimum Variance}
+port_minvar <- portfolio.spec(assets=stock_names) %>%
+  add.constraint(type="full_investment") %>%
+  add.constraint(type = "long_only") %>%
+  add.objective(type="risk", name="var")
+port_minvar
+```
+
+```{r}
+opt_minvar <- optimize.portfolio(R = stock_returns_xts,portfolio = port_minvar,
+                              optimize_method = "ROI", trace = TRUE)
+
+opt_minvar
+```
+
+```{r Plotting the weights}
+plot(opt_minvar, chart.assets=TRUE, main="Minimum Variance", 
+      xlim=c(0, 0.04), ylim=c(0,0.0008))
+```
+So, as we can see we see that we would invest the majority of our capital in Walmart and Exxon Mobile, due to the low standard deviation and quiet interesting we would not invest in Nividia.
+
+```{r}
+chart.RiskReward(opt_minvar,return.col="mean", risk.col="sd",
+                 chart.assets=TRUE, 
+                 xlim=c(0.01, 0.05),
+                 main="Minimum Variance")
+```
+
+```{r Weight setting for the Portfolios}
+wts_tan <- c(0, 0, 0, 1, 0, 0, 0, 0, 0, 0)
+wts_minvar <- c(0.0436, 0.0000, 0.0932, 0.0000, 0.4476, 0.0000, 0.0000, 0.0000, 0.0946, 0.321)# Weights from the Minimum Variance Portfolio
+```
+
+Portfolio Returns
+```{r}
+stock_returns
+
+tan_port <- stock_returns %>%
+    tq_portfolio(assets_col  = symbol, 
+                 returns_col = daily.returns, 
+                 weights     = wts_tan, 
+                 col_rename  = "Return")
+tan_port
+minvar_port <- stock_returns %>%
+    tq_portfolio(assets_col  = symbol, 
+                 returns_col = daily.returns, 
+                 weights     = wts_minvar, 
+                 col_rename  = "Return")
+minvar_port
+```
+For this task we take the SP500 as the benchmark.
+```{r SP500}
+bench_returns <- "^GSPC" %>%
+    tq_get(get  = "stock.prices",
+           from = "2000-01-01",
+           to   = "2020-11-17") %>%
+    tq_transmute(select     = adjusted, 
+                 mutate_fun = periodReturn, 
+                 period     = "daily", 
+                 col_rename = "Benchmark")
+bench_returns
+```
+```{r Merging the data together}
+ov_tan_port <- left_join(tan_port,bench_returns,by = "date")
+ov_minvar_port <- left_join(minvar_port,bench_returns,by = "date")
+
+ov_tan_port
+ov_minvar_port
+```
+```{r Overview for the Minimum Variance}
+ov_tan_port %>%
+    tq_performance(Ra = Return, Rb = Benchmark, 
+    performance_fun = table.CAPM)
+```
+
+```{r Overview for the Minimum Variance}
+ov_minvar_port %>%
+    tq_performance(Ra = Return, Rb = Benchmark, 
+    performance_fun = table.CAPM)
+```
+
 
 ## Exercise 3: Performance Evaluation II
 
