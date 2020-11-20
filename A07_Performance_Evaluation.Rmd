@@ -28,8 +28,9 @@ e) In the third step you follow page 6-8 of the second document and estimate the
 
 Read Chapter 24 of our book. In this exercise use a Minimum Variance and a Tangecy (Maxium Sharpe Ratio) portfolio calculate from your stocks, as well as the S&P500 as a benchmark (Period 2000-01-01 - 2020-01-11). For all three Investment Opportunities imagine you invest 100USD per month into the portfolio. What is the overall return this investment provides you? How much should you have invested at the beginning (one-time investment) to get the exact same overall wealth at the end of 2020? Can you plot both wealth developments over time?
 
-First of all, I am going to download all the crucial data, which we need in order to create the three portfolios. My personal stock choice are Apple, Nividia, Microsoft, American Express, Walmart, Bank of America, Morgan Stanley, Disney, Exxon Mobile. As the benchmark we take the S&p500, regarding to the underling task. 
+First of all, I am going to download all the crucial data, which we need in order to create the three portfolios. My personal stock choice are Apple, Nividia, Microsoft, American Express, Walmart, Bank of America, Morgan Stanley, Disney, Exxon Mobile. As the benchmark we take the S&P500, regarding to the underling task. 
 ```{r Choosing my personal set of stocks}
+install.packages("FinCal",dependencies=TRUE)
 library(timetk,PortfolioAnalytics)
 SP500 <- tq_index("SP500")
 stock_names <- c("AAPL", "NVDA", "MSFT", "AXP", "WMT", "BAC", "GS","MS", "DIS", "XOM")
@@ -40,13 +41,13 @@ stock_returns <-tq_get(x = stock_names,get  = "stock.prices", from = "2000-01-01
     group_by(symbol) %>%
     tq_transmute(select     = adjusted, 
                  mutate_fun = periodReturn, 
-                 period     = "daily")
+                 period     = "monthly")
 unique(stock_returns$symbol)
 
 stock_returns_xts <- stock_returns %>%
-                      subset( select = c(symbol,date, daily.returns)) %>% 
+                      subset( select = c(symbol,date, monthly.returns)) %>% 
                       pivot_wider(names_from = symbol, 
-                                  values_from = daily.returns) %>% 
+                                  values_from = monthly.returns) %>% 
                       tk_xts(date_var = date, silent = TRUE)
 stock_returns_xts
 ```
@@ -69,12 +70,12 @@ So, as we see we would make the most money if we would just everything in Nividi
 
 ```{r}
 plot(opt_port, chart.assets=TRUE, main="Maximum Return", 
-      xlim=c(0, 0.045), ylim=c(0,0.005))
+      xlim=c(0, 0.4), ylim=c(0,0.5))
 ```
 ```{r Risk Reward trade of}
 chart.RiskReward(opt_port,return.col="mean", risk.col="sd",
                  chart.assets=TRUE, 
-                 xlim=c(0.01, 0.04),
+                 xlim=c(0, 0.25),
                  main="Maximum Return")
 ```
 
@@ -92,10 +93,40 @@ port_tan <- portfolio.spec(assets=stock_names) %>%
   add.constraint(type="full_investment") %>%
   add.constraint(type = "long_only") %>%
   add.objective(type="return", name="mean")
-port_minvar
+port_tan
+```
+
+```{r Constructing the Tangency Portfolio}
+init.portf <- portfolio.spec(assets=stock_names)
+init.portf <- add.constraint(portfolio=init.portf, type="full_investment")
+init.portf <- add.constraint(portfolio=init.portf, type="long_only")
+init.portf <- add.objective(portfolio=init.portf, type="return", name="mean")
+init.portf <- add.objective(portfolio=init.portf, type="risk", name="StdDev")
+init.portf
+```
+Maximizing the Sharpe Ratio can be formulated as a quadratic programming problem and solved very quickly using optimize_method="ROI". Although "StdDev" was specified as an objective, the quadratic programming problem uses the variance-covariance matrix in the objective function.
+
+The default actin if "mean" and "StdDev" are specified as objectives with optimize_method="ROI" is to maximize quadratic utility. If we want to maximize Sharpe Ratio, we need to pass in maxSR=TRUE to optimize the portfolio, which should lead us to the tangency portfolio.
+
+```{r }
+maxSR.lo.ROI <- optimize.portfolio(R=stock_returns_xts, portfolio=init.portf, optimize_methode="ROI", maxSR=TRUE, trace=TRUE)
+maxSR.lo.ROI
+```
+It needed 35 Iterations to come as close as possible to the tangeny portfolio.
+We would put a big stake into Walmart, Exxon-Mobil, Disney.
+Although the maximum Sharpe Ratio objective can be solved quickly and accurately with optimize_method="ROI", it is also possible or DEoptim. These solvers have the added flexibility of using different methods to calculate the Sharpe Ratio (e.g. we could specify annualized measures of risk and return).
+
+```{r Use random portfolios to run the optimization}
+maxSR.lo.RP <- optimize.portfolio(R=stock_returns_xts, portfolio=init.portf, optimize_method="random", search_size=2000, trace=TRUE)
+maxSR.lo.RP
+chart.RiskReward(maxSR.lo.RP, risk.col="StdDev", return.col="mean")
+maxSR.lo.DE <- optimize.portfolio(R=stock_returns_xts, portfolio=init.portf, optimize_method="DEoptim", search_size=2000, trace=TRUE)
+maxSR.lo.DE
+chart.RiskReward(maxSR.lo.DE, risk.col="StdDev", return.col="mean")
 ```
 
 The Minmimum Variance Portfolio minimizing the variance of the portfolio
+
 ```{r Minimum Variance}
 port_minvar <- portfolio.spec(assets=stock_names) %>%
   add.constraint(type="full_investment") %>%
@@ -113,20 +144,20 @@ opt_minvar
 
 ```{r Plotting the weights}
 plot(opt_minvar, chart.assets=TRUE, main="Minimum Variance", 
-      xlim=c(0, 0.04), ylim=c(0,0.0008))
+      xlim=c(0.05, 0.3), ylim=c(0,0.1))
 ```
 So, as we can see we see that we would invest the majority of our capital in Walmart and Exxon Mobile, due to the low standard deviation and quiet interesting we would not invest in Nividia.
 
 ```{r}
 chart.RiskReward(opt_minvar,return.col="mean", risk.col="sd",
                  chart.assets=TRUE, 
-                 xlim=c(0.01, 0.05),
+                 xlim=c(0.01, 0.25),
                  main="Minimum Variance")
 ```
 
 ```{r Weight setting for the Portfolios}
-wts_tan <- c(0, 0, 0, 1, 0, 0, 0, 0, 0, 0)
-wts_minvar <- c(0.0436, 0.0000, 0.0932, 0.0000, 0.4476, 0.0000, 0.0000, 0.0000, 0.0946, 0.321)# Weights from the Minimum Variance Portfolio
+wts_tan <- c(0.046, 0.000, 0.000, 0.010, 0.434, 0.154, 0.000, 0.028, 0.000, 0.328)
+wts_minvar <- c(0.0241, 0.0000, 0.0615, 0.0000, 0.4551, 0.0000, 0.0000, 0.0000, 0.1094, 0.3499)# Weights from the Minimum Variance Portfolio
 ```
 
 Portfolio Returns
@@ -135,13 +166,13 @@ stock_returns
 
 tan_port <- stock_returns %>%
     tq_portfolio(assets_col  = symbol, 
-                 returns_col = daily.returns, 
+                 returns_col = monthly.returns, 
                  weights     = wts_tan, 
                  col_rename  = "Return")
 tan_port
 minvar_port <- stock_returns %>%
     tq_portfolio(assets_col  = symbol, 
-                 returns_col = daily.returns, 
+                 returns_col = monthly.returns, 
                  weights     = wts_minvar, 
                  col_rename  = "Return")
 minvar_port
@@ -154,7 +185,7 @@ bench_returns <- "^GSPC" %>%
            to   = "2020-11-17") %>%
     tq_transmute(select     = adjusted, 
                  mutate_fun = periodReturn, 
-                 period     = "daily", 
+                 period     = "monthly", 
                  col_rename = "Benchmark")
 bench_returns
 ```
@@ -165,7 +196,7 @@ ov_minvar_port <- left_join(minvar_port,bench_returns,by = "date")
 ov_tan_port
 ov_minvar_port
 ```
-```{r Overview for the Minimum Variance}
+```{r Overview for the Tangency Portfolio}
 ov_tan_port %>%
     tq_performance(Ra = Return, Rb = Benchmark, 
     performance_fun = table.CAPM)
@@ -176,6 +207,61 @@ ov_minvar_port %>%
     tq_performance(Ra = Return, Rb = Benchmark, 
     performance_fun = table.CAPM)
 ```
+```{r Mean calc}
+install.packages("psych")          # Install psych package
+library("psych")                   # Load psych package
+tan_r <- geometric.mean(ov_tan_port$Return)
+minvar_r <- geometric.mean(ov_minvar_port$Return)
+bench_r <- geometric.mean(ov_minvar_port$Benchmark)
+```
+
+```{r Future Value}
+FV_tan <- FV(rate = tan_r, nper = 1:239,pv = 100,pmt = -100,type = 1)
+FV_minvar <- FV(rate = minvar_r, nper = 1:239, pv = 100, pmt = -100, type=1)
+FV_bench <- FV(rate=bench_r, nper = 1:239, pv = 100, pmt = -100, type = 1)
+id <- c(1:239)
+as.data.frame(FV_tan)
+as.data.frame(id)
+as.data.frame(FV_minvar)
+as.data.frame(FV_bench)
+ov_list <- cbind(id, FV_tan,FV_minvar,FV_bench)
+ov_list <- as.data.frame(ov_list)
+invest <- ov_list[239,]
+invest
+```
+
+
+```{r Ploting the wealth development over time}
+ggplot(ov_list, aes(x=id)) + 
+  geom_line(aes(y = FV_tan), color = "darkred") + 
+  geom_line(aes(y = FV_minvar), color="steelblue", linetype="twodash") +
+  geom_line(aes(y=FV_bench), color="pink") +
+  ggtitle("Wealth Development")
+```
+
+```{r If we would want to get the same amount of money with a one time investment}
+PV_tan <- PV(rate = tan_r,nper = 1:239,fv =-invest$FV_tan ,pmt = 0,type = 1)
+PV_minvar <- PV(rate =minvar_r, nper=1:239,fv=-invest$FV_minvar,pmt=0,type=1)
+PV_bench <- PV(rate=bench_r, nper=1:239, fv=-invest$FV_bench,pmt=0, type=1)
+id <- c(1:239)
+as.data.frame(PV_tan)
+as.data.frame(id)
+as.data.frame(PV_minvar)
+as.data.frame(PV_bench)
+ov_list <- cbind(id, PV_tan,PV_minvar,PV_bench)
+ov_list <- as.data.frame(ov_list)
+invest <- ov_list[239,]
+invest
+```
+```{r}
+ggplot(ov_list, aes(x=id)) + 
+  geom_line(aes(y = PV_tan), color = "darkred") + 
+  geom_line(aes(y = PV_minvar), color="steelblue", linetype="twodash") +
+  geom_line(aes(y=PV_bench), color="pink") +
+  ggtitle("One time investment")
+```
+
+
 
 
 ## Exercise 3: Performance Evaluation II
