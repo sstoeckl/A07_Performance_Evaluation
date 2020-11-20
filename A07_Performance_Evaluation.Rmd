@@ -238,6 +238,7 @@ ggplot(ov_list, aes(x=id)) +
   geom_line(aes(y=FV_bench), color="pink") +
   ggtitle("Wealth Development")
 ```
+The tangency portfolio performed very good related to the others.
 
 ```{r If we would want to get the same amount of money with a one time investment}
 PV_tan <- PV(rate = tan_r,nper = 1:239,fv =-invest$FV_tan ,pmt = 0,type = 1)
@@ -253,6 +254,8 @@ ov_list <- as.data.frame(ov_list)
 invest <- ov_list[239,]
 invest
 ```
+As we see if we would like to make an one time investment, but also the exact same amount of money as if we would invest 100 dollar per month. For the Tangency Portfolio we would need to invest __3734.65__$ for the Minimium Variance Portfolio we would need to invest __4695.70__$ and for the passive strategy S&P500 we would need __5082.05__. So, as we can see that the intrest of intrest effect takes here part and dramatically increases the future value of our investment.
+
 ```{r}
 ggplot(ov_list, aes(x=id)) + 
   geom_line(aes(y = PV_tan), color = "darkred") + 
