@@ -8,6 +8,8 @@ output: html_notebook
 ```{r setup}
 #remotes::install_github("braverock/FactorAnalytics",  build_vignettes = TRUE, force = TRUE)
 pacman::p_load(tidyverse,tidyquant,FFdownload,FactorAnalytics,PerformanceAnalytics)
+install.packages("psych")          # Install psych package
+library("psych")                   # Load psych package
 ```
 
 **Please** remember to put your assignment solutions in `rmd` format using **many** chunks and putting readable text in between, similar to my examples given in Research Methods and Assignment 1!
@@ -70,7 +72,7 @@ So, as we see we would make the most money if we would just everything in Nividi
 
 ```{r}
 plot(opt_port, chart.assets=TRUE, main="Maximum Return", 
-      xlim=c(0, 0.4), ylim=c(0,0.5))
+      xlim=c(0, 0.2), ylim=c(0,0.5))
 ```
 ```{r Risk Reward trade of}
 chart.RiskReward(opt_port,return.col="mean", risk.col="sd",
@@ -83,7 +85,6 @@ chart.RiskReward(opt_port,return.col="mean", risk.col="sd",
 frontier <- create.EfficientFrontier(R=stock_returns_xts, 
                                        portfolio=port, 
                                        type="mean-StdDev")
-
 chart.EfficientFrontier(frontier, match.col="StdDev", type="l",rf = 0, tangent.line = TRUE, chart.assets = TRUE,)
 ```
 The efficient frontier is the set of optimal portfolios that offer the highest expected return for a defined level of risk or the lowest risk for a given level of expected return. Portfolios that lie below the efficient frontier are sub-optimal because they do not provide enough return for the level of risk.
@@ -112,7 +113,7 @@ The default actin if "mean" and "StdDev" are specified as objectives with optimi
 maxSR.lo.ROI <- optimize.portfolio(R=stock_returns_xts, portfolio=init.portf, optimize_methode="ROI", maxSR=TRUE, trace=TRUE)
 maxSR.lo.ROI
 ```
-It needed 35 Iterations to come as close as possible to the tangeny portfolio.
+It needed 17 Iterations to come as close as possible to the tangeny portfolio.
 We would put a big stake into Walmart, Exxon-Mobil, Disney.
 Although the maximum Sharpe Ratio objective can be solved quickly and accurately with optimize_method="ROI", it is also possible or DEoptim. These solvers have the added flexibility of using different methods to calculate the Sharpe Ratio (e.g. we could specify annualized measures of risk and return).
 
@@ -138,7 +139,6 @@ port_minvar
 ```{r}
 opt_minvar <- optimize.portfolio(R = stock_returns_xts,portfolio = port_minvar,
                               optimize_method = "ROI", trace = TRUE)
-
 opt_minvar
 ```
 
@@ -156,7 +156,7 @@ chart.RiskReward(opt_minvar,return.col="mean", risk.col="sd",
 ```
 
 ```{r Weight setting for the Portfolios}
-wts_tan <- c(0.046, 0.000, 0.000, 0.010, 0.434, 0.154, 0.000, 0.028, 0.000, 0.328)
+wts_tan <- c(0.136, 0.006, 0.000, 0.000, 0.440, 0.018, 0.154, 0.002, 0.000, 0.244)
 wts_minvar <- c(0.0241, 0.0000, 0.0615, 0.0000, 0.4551, 0.0000, 0.0000, 0.0000, 0.1094, 0.3499)# Weights from the Minimum Variance Portfolio
 ```
 
@@ -208,8 +208,6 @@ ov_minvar_port %>%
     performance_fun = table.CAPM)
 ```
 ```{r Mean calc}
-install.packages("psych")          # Install psych package
-library("psych")                   # Load psych package
 tan_r <- geometric.mean(ov_tan_port$Return)
 minvar_r <- geometric.mean(ov_minvar_port$Return)
 bench_r <- geometric.mean(ov_minvar_port$Benchmark)
