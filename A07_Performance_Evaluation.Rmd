@@ -288,11 +288,6 @@ If the gamma coefficient in the regression is positive, then the estimated equat
 
 ## Exercise 4: Active Portfolio Management
 
-Work through trough the demo `demo(relative_ranking)`. Use what you lear here, form an appropriate opinion on the ranking of your assets and optimize a Minimum Variance and Maximum Sharpe ratio Portfolio. Which one performs better?
-
-
-## Exercise 4: Active Portfolio Management
-
 Work through trough the demo `demo(relative_ranking)`. Use what you learn here, form an appropriate opinion on the ranking of your assets and optimize a Minimum Variance and Maximum Sharpe ratio Portfolio. Which one performs better?
 
 
