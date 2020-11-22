@@ -291,5 +291,263 @@ If the gamma coefficient in the regression is positive, then the estimated equat
 Work through trough the demo `demo(relative_ranking)`. Use what you lear here, form an appropriate opinion on the ranking of your assets and optimize a Minimum Variance and Maximum Sharpe ratio Portfolio. Which one performs better?
 
 
+## Exercise 4: Active Portfolio Management
+
+Work through trough the demo `demo(relative_ranking)`. Use what you learn here, form an appropriate opinion on the ranking of your assets and optimize a Minimum Variance and Maximum Sharpe ratio Portfolio. Which one performs better?
+
+
+demo(relative_ranking)
+
+data(edhec)
+```{r}
+R <- edhec[,1:4]
+```
+
+```{r}
+funds <- colnames(R)
+```
+ #' Construct initial portfolio with basic constraints.
+```{r}
+init.portf <- portfolio.spec(assets=funds)
+```
+
+```{r}
+init.portf <- add.constraint(portfolio=init.portf, type="weight_sum", 
+                              min_sum=0.99, max_sum=1.01)
+```
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+init.portf <- add.constraint(portfolio=init.portf, type="box",min=0.05, max=0.5)
+```
+
+```{r}
+init.portf <- add.objective(portfolio=init.portf, type="risk", name="StdDev")
+```
+
+```{r}
+
+init.portf <- add.objective(portfolio=init.portf, type="return", name="mean")
+
+init.portf
+```
+> #' Here we express views on the relative rank of the asset returns.
+
+```{r}
+asset.rank <- c(2, 3, 1, 4)
+
+```
+
+
+> #' Use Meucci Fully Flexible Views framework to express views on the relative
+> #' order of asset returns.
+> #' Define prior probabilities.
+
+```{r}
+p <- rep(1 / nrow(R), nrow(R))
+```
+
+> #' Express view on the relative ordering of asset returns
+
+```{r}
+m.moments <- meucci.ranking(R, p, asset.rank)
+
+```
+
+
+ #' Express views using the method described in Almgren and Chriss, 
+> #' "Portfolios from Sorts".
+
+```{r}
+ ac.moments <- list()
+
+ac.moments
+```
+
+```{r}
+ac.moments$mu <- ac.ranking(R, asset.rank)
+```
+
+> # Sample estimate for second moment
+
+```{r}
+ac.moments$sigma <- cov(R)
+```
+
+> #' Generate random portfolios for use in the optimization.
+
+```{r}
+rp <- random_portfolios(init.portf, 5000)
+
+rp
+```
+> #' Run the optimization using first and second moments estimated from 
+> #' Meucci's Fully Flexible Views framework using the moments we calculated
+
+
+```{r}
+opt.meucci <- optimize.portfolio(R, 
+                                 init.portf,
+                                 optimize_method="random", 
+                                 rp=rp, 
+                                 trace=TRUE,
+                                 momentargs=m.moments)
+
+opt.meucci
+
+
+```
+
+> #' Run the optimization using first moment estimated based on Almgren and Chriss, 
+> #' "Portfolios from Sorts". The second moment uses the sample estimate.
+
+```{r}
+opt.ac <- optimize.portfolio(R,
+                             init.portf,
+                             optimize_method="random",
+                             rp=rp,
+                             trace=TRUE,
+                             momentargs=ac.moments)
+
+opt.ac
+
+```
+> #' For comparison, run the optimization using sample estimates for first and 
+> #' second moments.
+
+```{r}
+opt.sample <- optimize.portfolio(R, 
+                                 init.portf, 
+                                 optimize_method="random", 
+                                 rp=rp,
+                                 trace=TRUE)
+opt.sample
+
+```
+
+
+> #' Here we plot the optimal weights of each optimization.
+
+```{r}
+chart.Weights(combine.optimizations(list(meucci=opt.meucci, 
+                                           ac=opt.ac,
+                                           sample=opt.sample)), 
+                
+              
+ylim=c(0,1), plot.type="barplot")
+
+```
+> #' Here we define a custom moment function to estimate moments based on 
+> #' relative ranking views.
+> #' Asset are ranked according to a momentum or reversal view based on the 
+> #' previous n periods.
+
+```{r}
+moment.ranking <- function(R, n=1, momentum=TRUE, method=c("meucci", "ac")){
+  
+# Moment function to estimate moments based on relative ranking of 
+# expected returns.
+  
+method <- match.arg(method)
+   
+   # Use the most recent n periods of returns
+   tmpR <- apply(tail(R, n), 2, function(x) prod(1 + x) - 1)
+   
+   if(momentum){
+     # Assume that the assets with the highest return will continue to outperform
+     asset.rank <- order(tmpR)
+   } else {
+# Assume that the assets with the highest return will reverse
+asset.rank <- rev(order(tmpR))
+}
+switch(method,
+meucci = {
+            # Meucci Fully Flexible Views framework
+            # Prior probabilities
+           p <- rep(1 / nrow(R), nrow(R))
+            
+            # Relative ordering view
+           moments <- meucci.ranking(R, p, asset.rank)
+          },
+          ac = {
+            # Almgren and Chriss Portfolios from Sorts
+            moments <- list()
+            moments$mu <- ac.ranking(R, asset.rank)
+            # Sample estimate for second moment
+            moments$sigma <- cov(R)
+         }
+   )
+   return(moments)
+ }
+
+
+opt.bt.meucci
+```
+
+> #' Here we run out of sample backtests to test the out of sample performance using the different frameworks to express our views on relative asset return ranking.
+
+```{r}
+pt.bt.meucci <- optimize.portfolio.rebalancing(R, init.portf, 
+                                               optimize_method="random",  
+                                               rebalance_on="quarters", 
+                                               training_period=100,
+                                               rp=rp,
+                                               momentFUN="moment.ranking",
+                                               n=2,
+                                               momentum=TRUE,
+                                               method="meucci")
+pt.bt.meucci
+
+```
+```{r}
+opt.bt.ac <- optimize.portfolio.rebalancing(R, init.portf, 
+optimize_method="random", 
+rebalance_on="quarters", 
+rp=rp,
+momentFUN="moment.ranking",
+n=2,
+momentum=TRUE,
+method="ac")
+```
+
+```{r}
+
+opt.bt.sample <- optimize.portfolio.rebalancing(R, init.portf, 
+                                                 optimize_method="random", 
+                                                 rebalance_on="quarters", 
+                                                 training_period=100,
+                                                 rp=rp)
+```
+
+> #' Compute returns and chart performance summary.
+
+```{r}
+ret.meucci <- Return.portfolio(R, extractWeights(opt.bt.meucci))
+```
+
+```{r}
+ret.ac <- Return.portfolio(R, extractWeights(opt.bt.ac))
+```
+
+```{r}
+ret.sample <- Return.portfolio(R, extractWeights(opt.bt.sample))
+```
+
+```{r}
+ret <- cbind(ret.meucci, ret.ac, ret.sample)
+```
+
+```{r}
+colnames(ret) <- c("meucci.rank", "ac.rank", "sample")
+```
+
+```{r}
+charts.PerformanceSummary(ret, main="Ranking Views Performance")
+```
+
+
+
+
+
+
 
 
