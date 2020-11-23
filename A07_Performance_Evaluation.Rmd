@@ -1,7 +1,7 @@
 ---
 title: "Portfoliomanagement and Financial Analysis - Assignment 7"
 subtitle: "Submit until Monday 2020-11-23, 13:00"
-author: "Lastname, Surname"
+author: "Baumann, Nicolas"
 output: html_notebook
 ---
   
