@@ -1802,40 +1802,687 @@ summary {
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuI3JlbW90ZXM6Omluc3RhbGxfZ2l0aHViKFwiYnJhdmVyb2NrL0ZhY3RvckFuYWx5dGljc1wiLCAgYnVpbGRfdmlnbmV0dGVzID0gVFJVRSwgZm9yY2UgPSBUUlVFKVxucGFjbWFuOjpwX2xvYWQodGlkeXZlcnNlLHRpZHlxdWFudCxGRmRvd25sb2FkLEZhY3RvckFuYWx5dGljcyxQZXJmb3JtYW5jZUFuYWx5dGljcylcbmBgYCJ9 -->
-<pre class="r"><code>#remotes::install_github(&quot;braverock/FactorAnalytics&quot;,  build_vignettes = TRUE, force = TRUE)
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYGBgclxuI3JlbW90ZXM6Omluc3RhbGxfZ2l0aHViKFxcYnJhdmVyb2NrL0ZhY3RvckFuYWx5dGljc1xcLCAgYnVpbGRfdmlnbmV0dGVzID0gVFJVRSwgZm9yY2UgPSBUUlVFKVxucGFjbWFuOjpwX2xvYWQodGlkeXZlcnNlLHRpZHlxdWFudCxGRmRvd25sb2FkLEZhY3RvckFuYWx5dGljcyxQZXJmb3JtYW5jZUFuYWx5dGljcylcbmBgYFxuYGBgIn0= -->
+<pre class="r"><code>```r
+#remotes::install_github(\braverock/FactorAnalytics\,  build_vignettes = TRUE, force = TRUE)
 pacman::p_load(tidyverse,tidyquant,FFdownload,FactorAnalytics,PerformanceAnalytics)</code></pre>
+<pre><code>
+&lt;!-- rnb-source-end --&gt;
+
+&lt;!-- rnb-chunk-end --&gt;
+
+
+&lt;!-- rnb-text-begin --&gt;
+
+
+**Please** remember to put your assignment solutions in `rmd` format using **many** chunks and putting readable text in between, similar to my examples given in Research Methods and Assignment 1!
+
+For all exercises: Please use the Assignment-Forum to post your questions, I will try my best to help you along!
+
+## Exercise 1: Analysing the CAPM
+
+In this exercise we want to estimate the CAPM. Please read carefully through the two documents provided (right hand side: files). Then we start to collect the necessary data:
+  
+a) From Datastream get the last 10 years of data from the 100 stocks of the S&amp;P100 using the list `LS&amp;P100I` (S&amp;P 100): total return index (RI) and market cap (MV)
+b) Further import the Fama-French-Factors from Kenneth Frenchs homepage (monthly, e.g. using `FFdownload`). From both datasets we select data for the last (available) 60 months, calculate returns (simple percentage) for the US-Stocks and eliminate those stocks that have NAs for this period.
+c) Now subtract the risk-free rate from all the stocks. Then estimate each stocks beta with the market: Regress all stock excess returns on the market excess return and save all betas (optimally use `mutate` and `map` in combination with `lm`). Estimate the mean-return for each stock and plot the return/beta-combinations. Create the security market line and include it in the plot! What do you find?
+d) In a next step (following both documents), we sort the stocks according to their beta and build ten value-weighted portfolios (with more or less the same number of stocks). Repeat a) for the ten portfolios. What do you observe?
+e) In the third step you follow page 6-8 of the second document and estimate the second-pass regression with the market and then market &amp; idiosyncratic risk. What do you observe? Present all your results in a similar fashion as in the document.
+
+## Exercise 2: Performance Evaluation I
+
+Read Chapter 24 of our book. In this exercise use a Minimum Variance and a Tangecy (maxium Sharpe Ratio) portfolio calculate from your stocks, as well as the S&amp;P500 as a benchmark (Period 2000-01-01 - 2020-01-11). For all three Investment Opportunities imagine you invest 100USD per month into the portfolio. What is the overall return this investment provides you? How much should you have investd at the bginning (one-time investment) to get the eact same overall wealth at the end of 2020? Can you plot both wealth developments over time?
+
+## Exercise 3: Performance Evaluation II
+
+For the same two portfolios and the appropriate benchmark calculate overall performance measures (Sharpe ratio, M2 [assume a risk-fre rate of 0], Treynor Ratio, Jensen&#39;s Alpha and Information ratio). Interpret. Additional do the two market timing regressions (ch 24.4) and see whether your portfolios can &quot;time&quot; the market.
+
+First of all, I am going to download all the crucial data, which we need in order to create the three portfolios. My personal stock choice are Apple, Nividia, Microsoft, American Express, Walmart, Bank of America, Morgan Stanley, Disney, Exxon Mobile. As the benchmark we take the S&amp;P500, regarding to the underling task. 
+
+&lt;!-- rnb-text-end --&gt;
+
+
+&lt;!-- rnb-chunk-begin --&gt;
+
+
+&lt;!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuaW5zdGFsbC5wYWNrYWdlcyhcIkZpbkNhbFwiLGRlcGVuZGVuY2llcz1UUlVFKVxubGlicmFyeSh0aW1ldGssUG9ydGZvbGlvQW5hbHl0aWNzKVxuU1A1MDAgPC0gdHFfaW5kZXgoXCJTUDUwMFwiKVxuc3RvY2tfbmFtZXMgPC0gYyhcIkFBUExcIiwgXCJOVkRBXCIsIFwiTVNGVFwiLCBcIkFYUFwiLCBcIldNVFwiLCBcIkJBQ1wiLCBcIkdTXCIsXCJNU1wiLCBcIkRJU1wiLCBcIlhPTVwiKVxuYGBgIn0= --&gt;
+
+```r
+install.packages(&quot;FinCal&quot;,dependencies=TRUE)
+library(timetk,PortfolioAnalytics)
+SP500 &lt;- tq_index(&quot;SP500&quot;)
+stock_names &lt;- c(&quot;AAPL&quot;, &quot;NVDA&quot;, &quot;MSFT&quot;, &quot;AXP&quot;, &quot;WMT&quot;, &quot;BAC&quot;, &quot;GS&quot;,&quot;MS&quot;, &quot;DIS&quot;, &quot;XOM&quot;)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
-<p><strong>Please</strong> remember to put your assignment solutions in <code>rmd</code> format using <strong>many</strong> chunks and putting readable text in between, similar to my examples given in Research Methods and Assignment 1!</p>
-<p>For all exercises: Please use the Assignment-Forum to post your questions, I will try my best to help you along!</p>
-<div id="exercise-1-analysing-the-capm" class="section level2">
-<h2>Exercise 1: Analysing the CAPM</h2>
-<p>In this exercise we want to estimate the CAPM. Please read carefully through the two documents provided (right hand side: files). Then we start to collect the necessary data:</p>
-<ol style="list-style-type: lower-alpha">
-<li>From Datastream get the last 10 years of data from the 100 stocks of the S&amp;P100 using the list <code>LS&amp;P100I</code> (S&amp;P 100): total return index (RI) and market cap (MV)</li>
-<li>Further import the Fama-French-Factors from Kenneth Frenchs homepage (monthly, e.g. using <code>FFdownload</code>). From both datasets we select data for the last (available) 60 months, calculate returns (simple percentage) for the US-Stocks and eliminate those stocks that have NAs for this period.</li>
-<li>Now subtract the risk-free rate from all the stocks. Then estimate each stocks beta with the market: Regress all stock excess returns on the market excess return and save all betas (optimally use <code>mutate</code> and <code>map</code> in combination with <code>lm</code>). Estimate the mean-return for each stock and plot the return/beta-combinations. Create the security market line and include it in the plot! What do you find?</li>
-<li>In a next step (following both documents), we sort the stocks according to their beta and build ten value-weighted portfolios (with more or less the same number of stocks). Repeat a) for the ten portfolios. What do you observe?</li>
-<li>In the third step you follow page 6-8 of the second document and estimate the second-pass regression with the market and then market &amp; idiosyncratic risk. What do you observe? Present all your results in a similar fashion as in the document.</li>
-</ol>
-</div>
-<div id="exercise-2-performance-evaluation-i" class="section level2">
-<h2>Exercise 2: Performance Evaluation I</h2>
-<p>Read Chapter 24 of our book. In this exercise use a Minimum Variance and a Tangecy (maxium Sharpe Ratio) portfolio calculate from your stocks, as well as the S&amp;P500 as a benchmark (Period 2000-01-01 - 2020-01-11). For all three Investment Opportunities imagine you invest 100USD per month into the portfolio. What is the overall return this investment provides you? How much should you have investd at the bginning (one-time investment) to get the eact same overall wealth at the end of 2020? Can you plot both wealth developments over time?</p>
-</div>
-<div id="exercise-3-performance-evaluation-ii" class="section level2">
-<h2>Exercise 3: Performance Evaluation II</h2>
-<p>For the same two portfolios and the appropriate benchmark calculate overall performance measures (Sharpe ratio, M2 [assume a risk-fre rate of 0], Treynor Ratio, Jensen’s Alpha and Information ratio). Interpret. Additional do the two market timing regressions (ch 24.4) and see whether your portfolios can “time” the market.</p>
-</div>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuc3RvY2tfcmV0dXJucyA8LXRxX2dldCh4ID0gc3RvY2tfbmFtZXMsZ2V0ICA9IFwic3RvY2sucHJpY2VzXCIsIGZyb20gPSBcIjIwMDAtMDEtMDFcIiwgdG8gICA9IFwiMjAyMC0xMS0xOFwiKSAlPiVcbiAgICBncm91cF9ieShzeW1ib2wpICU+JVxuICAgIHRxX3RyYW5zbXV0ZShzZWxlY3QgICAgID0gYWRqdXN0ZWQsIFxuICAgICAgICAgICAgICAgICBtdXRhdGVfZnVuID0gcGVyaW9kUmV0dXJuLCBcbiAgICAgICAgICAgICAgICAgcGVyaW9kICAgICA9IFwibW9udGhseVwiKVxudW5pcXVlKHN0b2NrX3JldHVybnMkc3ltYm9sKVxuXG5zdG9ja19yZXR1cm5zX3h0cyA8LSBzdG9ja19yZXR1cm5zICU+JVxuICAgICAgICAgICAgICAgICAgICAgIHN1YnNldCggc2VsZWN0ID0gYyhzeW1ib2wsZGF0ZSwgbW9udGhseS5yZXR1cm5zKSkgJT4lIFxuICAgICAgICAgICAgICAgICAgICAgIHBpdm90X3dpZGVyKG5hbWVzX2Zyb20gPSBzeW1ib2wsIFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHZhbHVlc19mcm9tID0gbW9udGhseS5yZXR1cm5zKSAlPiUgXG4gICAgICAgICAgICAgICAgICAgICAgdGtfeHRzKGRhdGVfdmFyID0gZGF0ZSwgc2lsZW50ID0gVFJVRSlcbnN0b2NrX3JldHVybnNfeHRzXG5gYGAifQ== -->
+<pre class="r"><code>stock_returns &lt;-tq_get(x = stock_names,get  = &quot;stock.prices&quot;, from = &quot;2000-01-01&quot;, to   = &quot;2020-11-18&quot;) %&gt;%
+    group_by(symbol) %&gt;%
+    tq_transmute(select     = adjusted, 
+                 mutate_fun = periodReturn, 
+                 period     = &quot;monthly&quot;)
+unique(stock_returns$symbol)
+
+stock_returns_xts &lt;- stock_returns %&gt;%
+                      subset( select = c(symbol,date, monthly.returns)) %&gt;% 
+                      pivot_wider(names_from = symbol, 
+                                  values_from = monthly.returns) %&gt;% 
+                      tk_xts(date_var = date, silent = TRUE)
+stock_returns_xts</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucG9ydCA8LSBwb3J0Zm9saW8uc3BlYyhhc3NldHM9c3RvY2tfbmFtZXMpJT4lXG4gIGFkZC5jb25zdHJhaW50KHR5cGU9XCJmdWxsX2ludmVzdG1lbnRcIikgJT4lICNJbiBvdXIgYXBwcm9hY2ggd2UgdXNlIGZ1bGxfaW52ZXN0bWVudCBhcyBvdXIgdGFzayBpdCBpc1xuICBhZGQuY29uc3RyYWludCh0eXBlPVwibG9uZ19vbmx5XCIpICU+JSAjV2UgZG8gbm90IHRha2UgYW55IHNob3J0LXNlbGxpbmdcbiAgYWRkLm9iamVjdGl2ZSh0eXBlPVwicmV0dXJuXCIsIG5hbWU9XCJtZWFuXCIpXG5wb3J0XG5gYGAifQ== -->
+<pre class="r"><code>port &lt;- portfolio.spec(assets=stock_names)%&gt;%
+  add.constraint(type=&quot;full_investment&quot;) %&gt;% #In our approach we use full_investment as our task it is
+  add.constraint(type=&quot;long_only&quot;) %&gt;% #We do not take any short-selling
+  add.objective(type=&quot;return&quot;, name=&quot;mean&quot;)
+port</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>Now I defined the investment constrains for our investments, which is based on our task a full investment constrained, due to the fact that we would like to be fully invested the whole period. The long only constrain comes from the idea that we are just caring about the upper part of the efficient frontier, in order to construct the tangency portfolio, which is the <strong>most efficient</strong> way to set our 10 stocks together concerning the faced risked. So, in order words the tangency portfolio maximizes the Sharpe Ratio. The second portfolio we have to construct is the Minimum-Variance Portfolio. The <em>“third”</em> portfolio would be an absolute passive strategy we would just invest in the SP500.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxub3B0X3BvcnQgPC0gb3B0aW1pemUucG9ydGZvbGlvKFI9c3RvY2tfcmV0dXJuc194dHMsIHBvcnRmb2xpbz1wb3J0LFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgb3B0aW1pemVfbWV0aG9kPVwiUk9JXCIsIHRyYWNlPVRSVUUpXG5vcHRfcG9ydFxuYGBgIn0= -->
+<pre class="r"><code>opt_port &lt;- optimize.portfolio(R=stock_returns_xts, portfolio=port,
+                                 optimize_method=&quot;ROI&quot;, trace=TRUE)
+opt_port</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>So, as we see we would make the most money if we would just everything in Nividia. However, we do not look for the maximum return, we look for the maximum return in relation to the taken risk.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucGxvdChvcHRfcG9ydCwgY2hhcnQuYXNzZXRzPVRSVUUsIG1haW49XCJNYXhpbXVtIFJldHVyblwiLCBcbiAgICAgIHhsaW09YygwLCAwLjIpLCB5bGltPWMoMCwwLjUpKVxuYGBgIn0= -->
+<pre class="r"><code>plot(opt_port, chart.assets=TRUE, main=&quot;Maximum Return&quot;, 
+      xlim=c(0, 0.2), ylim=c(0,0.5))</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuY2hhcnQuUmlza1Jld2FyZChvcHRfcG9ydCxyZXR1cm4uY29sPVwibWVhblwiLCByaXNrLmNvbD1cInNkXCIsXG4gICAgICAgICAgICAgICAgIGNoYXJ0LmFzc2V0cz1UUlVFLCBcbiAgICAgICAgICAgICAgICAgeGxpbT1jKDAsIDAuMjUpLFxuICAgICAgICAgICAgICAgICBtYWluPVwiTWF4aW11bSBSZXR1cm5cIilcbmBgYCJ9 -->
+<pre class="r"><code>chart.RiskReward(opt_port,return.col=&quot;mean&quot;, risk.col=&quot;sd&quot;,
+                 chart.assets=TRUE, 
+                 xlim=c(0, 0.25),
+                 main=&quot;Maximum Return&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZnJvbnRpZXIgPC0gY3JlYXRlLkVmZmljaWVudEZyb250aWVyKFI9c3RvY2tfcmV0dXJuc194dHMsIFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcG9ydGZvbGlvPXBvcnQsIFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgdHlwZT1cIm1lYW4tU3RkRGV2XCIpXG5jaGFydC5FZmZpY2llbnRGcm9udGllcihmcm9udGllciwgbWF0Y2guY29sPVwiU3RkRGV2XCIsIHR5cGU9XCJsXCIscmYgPSAwLCB0YW5nZW50LmxpbmUgPSBUUlVFLCBjaGFydC5hc3NldHMgPSBUUlVFLClcbmBgYCJ9 -->
+<pre class="r"><code>frontier &lt;- create.EfficientFrontier(R=stock_returns_xts, 
+                                       portfolio=port, 
+                                       type=&quot;mean-StdDev&quot;)
+chart.EfficientFrontier(frontier, match.col=&quot;StdDev&quot;, type=&quot;l&quot;,rf = 0, tangent.line = TRUE, chart.assets = TRUE,)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>The efficient frontier is the set of optimal portfolios that offer the highest expected return for a defined level of risk or the lowest risk for a given level of expected return. Portfolios that lie below the efficient frontier are sub-optimal because they do not provide enough return for the level of risk.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucG9ydF90YW4gPC0gcG9ydGZvbGlvLnNwZWMoYXNzZXRzPXN0b2NrX25hbWVzKSAlPiVcbiAgYWRkLmNvbnN0cmFpbnQodHlwZT1cImZ1bGxfaW52ZXN0bWVudFwiKSAlPiVcbiAgYWRkLmNvbnN0cmFpbnQodHlwZSA9IFwibG9uZ19vbmx5XCIpICU+JVxuICBhZGQub2JqZWN0aXZlKHR5cGU9XCJyZXR1cm5cIiwgbmFtZT1cIm1lYW5cIilcbnBvcnRfdGFuXG5gYGAifQ== -->
+<pre class="r"><code>port_tan &lt;- portfolio.spec(assets=stock_names) %&gt;%
+  add.constraint(type=&quot;full_investment&quot;) %&gt;%
+  add.constraint(type = &quot;long_only&quot;) %&gt;%
+  add.objective(type=&quot;return&quot;, name=&quot;mean&quot;)
+port_tan</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuaW5pdC5wb3J0ZiA8LSBwb3J0Zm9saW8uc3BlYyhhc3NldHM9c3RvY2tfbmFtZXMpXG5pbml0LnBvcnRmIDwtIGFkZC5jb25zdHJhaW50KHBvcnRmb2xpbz1pbml0LnBvcnRmLCB0eXBlPVwiZnVsbF9pbnZlc3RtZW50XCIpXG5pbml0LnBvcnRmIDwtIGFkZC5jb25zdHJhaW50KHBvcnRmb2xpbz1pbml0LnBvcnRmLCB0eXBlPVwibG9uZ19vbmx5XCIpXG5pbml0LnBvcnRmIDwtIGFkZC5vYmplY3RpdmUocG9ydGZvbGlvPWluaXQucG9ydGYsIHR5cGU9XCJyZXR1cm5cIiwgbmFtZT1cIm1lYW5cIilcbmluaXQucG9ydGYgPC0gYWRkLm9iamVjdGl2ZShwb3J0Zm9saW89aW5pdC5wb3J0ZiwgdHlwZT1cInJpc2tcIiwgbmFtZT1cIlN0ZERldlwiKVxuaW5pdC5wb3J0ZlxuYGBgIn0= -->
+<pre class="r"><code>init.portf &lt;- portfolio.spec(assets=stock_names)
+init.portf &lt;- add.constraint(portfolio=init.portf, type=&quot;full_investment&quot;)
+init.portf &lt;- add.constraint(portfolio=init.portf, type=&quot;long_only&quot;)
+init.portf &lt;- add.objective(portfolio=init.portf, type=&quot;return&quot;, name=&quot;mean&quot;)
+init.portf &lt;- add.objective(portfolio=init.portf, type=&quot;risk&quot;, name=&quot;StdDev&quot;)
+init.portf</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>Maximizing the Sharpe Ratio can be formulated as a quadratic programming problem and solved very quickly using optimize_method=“ROI”. Although “StdDev” was specified as an objective, the quadratic programming problem uses the variance-covariance matrix in the objective function.</p>
+<p>The default actin if “mean” and “StdDev” are specified as objectives with optimize_method=“ROI” is to maximize quadratic utility. If we want to maximize Sharpe Ratio, we need to pass in maxSR=TRUE to optimize the portfolio, which should lead us to the tangency portfolio.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubWF4U1IubG8uUk9JIDwtIG9wdGltaXplLnBvcnRmb2xpbyhSPXN0b2NrX3JldHVybnNfeHRzLCBwb3J0Zm9saW89aW5pdC5wb3J0Ziwgb3B0aW1pemVfbWV0aG9kZT1cIlJPSVwiLCBtYXhTUj1UUlVFLCB0cmFjZT1UUlVFKVxubWF4U1IubG8uUk9JXG5gYGAifQ== -->
+<pre class="r"><code>maxSR.lo.ROI &lt;- optimize.portfolio(R=stock_returns_xts, portfolio=init.portf, optimize_methode=&quot;ROI&quot;, maxSR=TRUE, trace=TRUE)
+maxSR.lo.ROI</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>It needed 17 Iterations to come as close as possible to the tangeny portfolio. We would put a big stake into Walmart, Exxon-Mobil, Disney. Although the maximum Sharpe Ratio objective can be solved quickly and accurately with optimize_method=“ROI”, it is also possible or DEoptim. These solvers have the added flexibility of using different methods to calculate the Sharpe Ratio (e.g. we could specify annualized measures of risk and return).</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubWF4U1IubG8uUlAgPC0gb3B0aW1pemUucG9ydGZvbGlvKFI9c3RvY2tfcmV0dXJuc194dHMsIHBvcnRmb2xpbz1pbml0LnBvcnRmLCBvcHRpbWl6ZV9tZXRob2Q9XCJyYW5kb21cIiwgc2VhcmNoX3NpemU9MjAwMCwgdHJhY2U9VFJVRSlcbm1heFNSLmxvLlJQXG5jaGFydC5SaXNrUmV3YXJkKG1heFNSLmxvLlJQLCByaXNrLmNvbD1cIlN0ZERldlwiLCByZXR1cm4uY29sPVwibWVhblwiKVxubWF4U1IubG8uREUgPC0gb3B0aW1pemUucG9ydGZvbGlvKFI9c3RvY2tfcmV0dXJuc194dHMsIHBvcnRmb2xpbz1pbml0LnBvcnRmLCBvcHRpbWl6ZV9tZXRob2Q9XCJERW9wdGltXCIsIHNlYXJjaF9zaXplPTIwMDAsIHRyYWNlPVRSVUUpXG5tYXhTUi5sby5ERVxuY2hhcnQuUmlza1Jld2FyZChtYXhTUi5sby5ERSwgcmlzay5jb2w9XCJTdGREZXZcIiwgcmV0dXJuLmNvbD1cIm1lYW5cIilcbmBgYCJ9 -->
+<pre class="r"><code>maxSR.lo.RP &lt;- optimize.portfolio(R=stock_returns_xts, portfolio=init.portf, optimize_method=&quot;random&quot;, search_size=2000, trace=TRUE)
+maxSR.lo.RP
+chart.RiskReward(maxSR.lo.RP, risk.col=&quot;StdDev&quot;, return.col=&quot;mean&quot;)
+maxSR.lo.DE &lt;- optimize.portfolio(R=stock_returns_xts, portfolio=init.portf, optimize_method=&quot;DEoptim&quot;, search_size=2000, trace=TRUE)
+maxSR.lo.DE
+chart.RiskReward(maxSR.lo.DE, risk.col=&quot;StdDev&quot;, return.col=&quot;mean&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>The Minmimum Variance Portfolio minimizing the variance of the portfolio</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucG9ydF9taW52YXIgPC0gcG9ydGZvbGlvLnNwZWMoYXNzZXRzPXN0b2NrX25hbWVzKSAlPiVcbiAgYWRkLmNvbnN0cmFpbnQodHlwZT1cImZ1bGxfaW52ZXN0bWVudFwiKSAlPiVcbiAgYWRkLmNvbnN0cmFpbnQodHlwZSA9IFwibG9uZ19vbmx5XCIpICU+JVxuICBhZGQub2JqZWN0aXZlKHR5cGU9XCJyaXNrXCIsIG5hbWU9XCJ2YXJcIilcbnBvcnRfbWludmFyXG5gYGAifQ== -->
+<pre class="r"><code>port_minvar &lt;- portfolio.spec(assets=stock_names) %&gt;%
+  add.constraint(type=&quot;full_investment&quot;) %&gt;%
+  add.constraint(type = &quot;long_only&quot;) %&gt;%
+  add.objective(type=&quot;risk&quot;, name=&quot;var&quot;)
+port_minvar</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxub3B0X21pbnZhciA8LSBvcHRpbWl6ZS5wb3J0Zm9saW8oUiA9IHN0b2NrX3JldHVybnNfeHRzLHBvcnRmb2xpbyA9IHBvcnRfbWludmFyLFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgb3B0aW1pemVfbWV0aG9kID0gXCJST0lcIiwgdHJhY2UgPSBUUlVFKVxub3B0X21pbnZhclxuYGBgIn0= -->
+<pre class="r"><code>opt_minvar &lt;- optimize.portfolio(R = stock_returns_xts,portfolio = port_minvar,
+                              optimize_method = &quot;ROI&quot;, trace = TRUE)
+opt_minvar</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucGxvdChvcHRfbWludmFyLCBjaGFydC5hc3NldHM9VFJVRSwgbWFpbj1cIk1pbmltdW0gVmFyaWFuY2VcIiwgXG4gICAgICB4bGltPWMoMC4wNSwgMC4zKSwgeWxpbT1jKDAsMC4xKSlcbmBgYCJ9 -->
+<pre class="r"><code>plot(opt_minvar, chart.assets=TRUE, main=&quot;Minimum Variance&quot;, 
+      xlim=c(0.05, 0.3), ylim=c(0,0.1))</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>So, as we can see we see that we would invest the majority of our capital in Walmart and Exxon Mobile, due to the low standard deviation and quiet interesting we would not invest in Nividia.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuY2hhcnQuUmlza1Jld2FyZChvcHRfbWludmFyLHJldHVybi5jb2w9XCJtZWFuXCIsIHJpc2suY29sPVwic2RcIixcbiAgICAgICAgICAgICAgICAgY2hhcnQuYXNzZXRzPVRSVUUsIFxuICAgICAgICAgICAgICAgICB4bGltPWMoMC4wMSwgMC4yNSksXG4gICAgICAgICAgICAgICAgIG1haW49XCJNaW5pbXVtIFZhcmlhbmNlXCIpXG5gYGAifQ== -->
+<pre class="r"><code>chart.RiskReward(opt_minvar,return.col=&quot;mean&quot;, risk.col=&quot;sd&quot;,
+                 chart.assets=TRUE, 
+                 xlim=c(0.01, 0.25),
+                 main=&quot;Minimum Variance&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxud3RzX3RhbiA8LSBjKDAuMTM2LCAwLjAwNiwgMC4wMDAsIDAuMDAwLCAwLjQ0MCwgMC4wMTgsIDAuMTU0LCAwLjAwMiwgMC4wMDAsIDAuMjQ0KVxud3RzX21pbnZhciA8LSBjKDAuMDI0MSwgMC4wMDAwLCAwLjA2MTUsIDAuMDAwMCwgMC40NTUxLCAwLjAwMDAsIDAuMDAwMCwgMC4wMDAwLCAwLjEwOTQsIDAuMzQ5OSkjIFdlaWdodHMgZnJvbSB0aGUgTWluaW11bSBWYXJpYW5jZSBQb3J0Zm9saW9cbmBgYCJ9 -->
+<pre class="r"><code>wts_tan &lt;- c(0.136, 0.006, 0.000, 0.000, 0.440, 0.018, 0.154, 0.002, 0.000, 0.244)
+wts_minvar &lt;- c(0.0241, 0.0000, 0.0615, 0.0000, 0.4551, 0.0000, 0.0000, 0.0000, 0.1094, 0.3499)# Weights from the Minimum Variance Portfolio</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>Portfolio Returns</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuc3RvY2tfcmV0dXJuc1xuXG50YW5fcG9ydCA8LSBzdG9ja19yZXR1cm5zICU+JVxuICAgIHRxX3BvcnRmb2xpbyhhc3NldHNfY29sICA9IHN5bWJvbCwgXG4gICAgICAgICAgICAgICAgIHJldHVybnNfY29sID0gbW9udGhseS5yZXR1cm5zLCBcbiAgICAgICAgICAgICAgICAgd2VpZ2h0cyAgICAgPSB3dHNfdGFuLCBcbiAgICAgICAgICAgICAgICAgY29sX3JlbmFtZSAgPSBcIlJldHVyblwiKVxudGFuX3BvcnRcbm1pbnZhcl9wb3J0IDwtIHN0b2NrX3JldHVybnMgJT4lXG4gICAgdHFfcG9ydGZvbGlvKGFzc2V0c19jb2wgID0gc3ltYm9sLCBcbiAgICAgICAgICAgICAgICAgcmV0dXJuc19jb2wgPSBtb250aGx5LnJldHVybnMsIFxuICAgICAgICAgICAgICAgICB3ZWlnaHRzICAgICA9IHd0c19taW52YXIsIFxuICAgICAgICAgICAgICAgICBjb2xfcmVuYW1lICA9IFwiUmV0dXJuXCIpXG5taW52YXJfcG9ydFxuYGBgIn0= -->
+<pre class="r"><code>stock_returns
+
+tan_port &lt;- stock_returns %&gt;%
+    tq_portfolio(assets_col  = symbol, 
+                 returns_col = monthly.returns, 
+                 weights     = wts_tan, 
+                 col_rename  = &quot;Return&quot;)
+tan_port
+minvar_port &lt;- stock_returns %&gt;%
+    tq_portfolio(assets_col  = symbol, 
+                 returns_col = monthly.returns, 
+                 weights     = wts_minvar, 
+                 col_rename  = &quot;Return&quot;)
+minvar_port</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>For this task we take the SP500 as the benchmark.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYmVuY2hfcmV0dXJucyA8LSBcIl5HU1BDXCIgJT4lXG4gICAgdHFfZ2V0KGdldCAgPSBcInN0b2NrLnByaWNlc1wiLFxuICAgICAgICAgICBmcm9tID0gXCIyMDAwLTAxLTAxXCIsXG4gICAgICAgICAgIHRvICAgPSBcIjIwMjAtMTEtMTdcIikgJT4lXG4gICAgdHFfdHJhbnNtdXRlKHNlbGVjdCAgICAgPSBhZGp1c3RlZCwgXG4gICAgICAgICAgICAgICAgIG11dGF0ZV9mdW4gPSBwZXJpb2RSZXR1cm4sIFxuICAgICAgICAgICAgICAgICBwZXJpb2QgICAgID0gXCJtb250aGx5XCIsIFxuICAgICAgICAgICAgICAgICBjb2xfcmVuYW1lID0gXCJCZW5jaG1hcmtcIilcbmJlbmNoX3JldHVybnNcbmBgYCJ9 -->
+<pre class="r"><code>bench_returns &lt;- &quot;^GSPC&quot; %&gt;%
+    tq_get(get  = &quot;stock.prices&quot;,
+           from = &quot;2000-01-01&quot;,
+           to   = &quot;2020-11-17&quot;) %&gt;%
+    tq_transmute(select     = adjusted, 
+                 mutate_fun = periodReturn, 
+                 period     = &quot;monthly&quot;, 
+                 col_rename = &quot;Benchmark&quot;)
+bench_returns</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxub3ZfdGFuX3BvcnQgPC0gbGVmdF9qb2luKHRhbl9wb3J0LGJlbmNoX3JldHVybnMsYnkgPSBcImRhdGVcIilcbm92X21pbnZhcl9wb3J0IDwtIGxlZnRfam9pbihtaW52YXJfcG9ydCxiZW5jaF9yZXR1cm5zLGJ5ID0gXCJkYXRlXCIpXG5cbm92X3Rhbl9wb3J0XG5vdl9taW52YXJfcG9ydFxuYGBgIn0= -->
+<pre class="r"><code>ov_tan_port &lt;- left_join(tan_port,bench_returns,by = &quot;date&quot;)
+ov_minvar_port &lt;- left_join(minvar_port,bench_returns,by = &quot;date&quot;)
+
+ov_tan_port
+ov_minvar_port</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxub3ZfdGFuX3BvcnQgJT4lXG4gICAgdHFfcGVyZm9ybWFuY2UoUmEgPSBSZXR1cm4sIFJiID0gQmVuY2htYXJrLCBcbiAgICBwZXJmb3JtYW5jZV9mdW4gPSB0YWJsZS5DQVBNKVxuYGBgIn0= -->
+<pre class="r"><code>ov_tan_port %&gt;%
+    tq_performance(Ra = Return, Rb = Benchmark, 
+    performance_fun = table.CAPM)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxub3ZfbWludmFyX3BvcnQgJT4lXG4gICAgdHFfcGVyZm9ybWFuY2UoUmEgPSBSZXR1cm4sIFJiID0gQmVuY2htYXJrLCBcbiAgICBwZXJmb3JtYW5jZV9mdW4gPSB0YWJsZS5DQVBNKVxuYGBgIn0= -->
+<pre class="r"><code>ov_minvar_port %&gt;%
+    tq_performance(Ra = Return, Rb = Benchmark, 
+    performance_fun = table.CAPM)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudGFuX3IgPC0gZ2VvbWV0cmljLm1lYW4ob3ZfdGFuX3BvcnQkUmV0dXJuKVxubWludmFyX3IgPC0gZ2VvbWV0cmljLm1lYW4ob3ZfbWludmFyX3BvcnQkUmV0dXJuKVxuYmVuY2hfciA8LSBnZW9tZXRyaWMubWVhbihvdl9taW52YXJfcG9ydCRCZW5jaG1hcmspXG5gYGAifQ== -->
+<pre class="r"><code>tan_r &lt;- geometric.mean(ov_tan_port$Return)
+minvar_r &lt;- geometric.mean(ov_minvar_port$Return)
+bench_r &lt;- geometric.mean(ov_minvar_port$Benchmark)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuRlZfdGFuIDwtIEZWKHJhdGUgPSB0YW5fciwgbnBlciA9IDE6MjM5LHB2ID0gMTAwLHBtdCA9IC0xMDAsdHlwZSA9IDEpXG5GVl9taW52YXIgPC0gRlYocmF0ZSA9IG1pbnZhcl9yLCBucGVyID0gMToyMzksIHB2ID0gMTAwLCBwbXQgPSAtMTAwLCB0eXBlPTEpXG5GVl9iZW5jaCA8LSBGVihyYXRlPWJlbmNoX3IsIG5wZXIgPSAxOjIzOSwgcHYgPSAxMDAsIHBtdCA9IC0xMDAsIHR5cGUgPSAxKVxuaWQgPC0gYygxOjIzOSlcbmFzLmRhdGEuZnJhbWUoRlZfdGFuKVxuYXMuZGF0YS5mcmFtZShpZClcbmFzLmRhdGEuZnJhbWUoRlZfbWludmFyKVxuYXMuZGF0YS5mcmFtZShGVl9iZW5jaClcbm92X2xpc3QgPC0gY2JpbmQoaWQsIEZWX3RhbixGVl9taW52YXIsRlZfYmVuY2gpXG5vdl9saXN0IDwtIGFzLmRhdGEuZnJhbWUob3ZfbGlzdClcbmludmVzdCA8LSBvdl9saXN0WzIzOSxdXG5pbnZlc3RcbmBgYCJ9 -->
+<pre class="r"><code>FV_tan &lt;- FV(rate = tan_r, nper = 1:239,pv = 100,pmt = -100,type = 1)
+FV_minvar &lt;- FV(rate = minvar_r, nper = 1:239, pv = 100, pmt = -100, type=1)
+FV_bench &lt;- FV(rate=bench_r, nper = 1:239, pv = 100, pmt = -100, type = 1)
+id &lt;- c(1:239)
+as.data.frame(FV_tan)
+as.data.frame(id)
+as.data.frame(FV_minvar)
+as.data.frame(FV_bench)
+ov_list &lt;- cbind(id, FV_tan,FV_minvar,FV_bench)
+ov_list &lt;- as.data.frame(ov_list)
+invest &lt;- ov_list[239,]
+invest</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZ2dwbG90KG92X2xpc3QsIGFlcyh4PWlkKSkgKyBcbiAgZ2VvbV9saW5lKGFlcyh5ID0gRlZfdGFuKSwgY29sb3IgPSBcImRhcmtyZWRcIikgKyBcbiAgZ2VvbV9saW5lKGFlcyh5ID0gRlZfbWludmFyKSwgY29sb3I9XCJzdGVlbGJsdWVcIiwgbGluZXR5cGU9XCJ0d29kYXNoXCIpICtcbiAgZ2VvbV9saW5lKGFlcyh5PUZWX2JlbmNoKSwgY29sb3I9XCJwaW5rXCIpICtcbiAgZ2d0aXRsZShcIldlYWx0aCBEZXZlbG9wbWVudFwiKVxuYGBgIn0= -->
+<pre class="r"><code>ggplot(ov_list, aes(x=id)) + 
+  geom_line(aes(y = FV_tan), color = &quot;darkred&quot;) + 
+  geom_line(aes(y = FV_minvar), color=&quot;steelblue&quot;, linetype=&quot;twodash&quot;) +
+  geom_line(aes(y=FV_bench), color=&quot;pink&quot;) +
+  ggtitle(&quot;Wealth Development&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>The tangency portfolio performed very good related to the others.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuUFZfdGFuIDwtIFBWKHJhdGUgPSB0YW5fcixucGVyID0gMToyMzksZnYgPS1pbnZlc3QkRlZfdGFuICxwbXQgPSAwLHR5cGUgPSAxKVxuUFZfbWludmFyIDwtIFBWKHJhdGUgPW1pbnZhcl9yLCBucGVyPTE6MjM5LGZ2PS1pbnZlc3QkRlZfbWludmFyLHBtdD0wLHR5cGU9MSlcblBWX2JlbmNoIDwtIFBWKHJhdGU9YmVuY2hfciwgbnBlcj0xOjIzOSwgZnY9LWludmVzdCRGVl9iZW5jaCxwbXQ9MCwgdHlwZT0xKVxuaWQgPC0gYygxOjIzOSlcbmFzLmRhdGEuZnJhbWUoUFZfdGFuKVxuYXMuZGF0YS5mcmFtZShpZClcbmFzLmRhdGEuZnJhbWUoUFZfbWludmFyKVxuYXMuZGF0YS5mcmFtZShQVl9iZW5jaClcbm92X2xpc3QgPC0gY2JpbmQoaWQsIFBWX3RhbixQVl9taW52YXIsUFZfYmVuY2gpXG5vdl9saXN0IDwtIGFzLmRhdGEuZnJhbWUob3ZfbGlzdClcbmludmVzdCA8LSBvdl9saXN0WzIzOSxdXG5pbnZlc3RcbmBgYCJ9 -->
+<pre class="r"><code>PV_tan &lt;- PV(rate = tan_r,nper = 1:239,fv =-invest$FV_tan ,pmt = 0,type = 1)
+PV_minvar &lt;- PV(rate =minvar_r, nper=1:239,fv=-invest$FV_minvar,pmt=0,type=1)
+PV_bench &lt;- PV(rate=bench_r, nper=1:239, fv=-invest$FV_bench,pmt=0, type=1)
+id &lt;- c(1:239)
+as.data.frame(PV_tan)
+as.data.frame(id)
+as.data.frame(PV_minvar)
+as.data.frame(PV_bench)
+ov_list &lt;- cbind(id, PV_tan,PV_minvar,PV_bench)
+ov_list &lt;- as.data.frame(ov_list)
+invest &lt;- ov_list[239,]
+invest</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>As we see if we would like to make an one time investment, but also the exact same amount of money as if we would invest 100 dollar per month. For the Tangency Portfolio we would need to invest <strong>3734.65</strong>$ for the Minimium Variance Portfolio we would need to invest <strong>4695.70</strong>$ and for the passive strategy S&amp;P500 we would need <strong>5082.05</strong>. So, as we can see that the intrest of intrest effect takes here part and dramatically increases the future value of our investment.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZ2dwbG90KG92X2xpc3QsIGFlcyh4PWlkKSkgKyBcbiAgZ2VvbV9saW5lKGFlcyh5ID0gUFZfdGFuKSwgY29sb3IgPSBcImRhcmtyZWRcIikgKyBcbiAgZ2VvbV9saW5lKGFlcyh5ID0gUFZfbWludmFyKSwgY29sb3I9XCJzdGVlbGJsdWVcIiwgbGluZXR5cGU9XCJ0d29kYXNoXCIpICtcbiAgZ2VvbV9saW5lKGFlcyh5PVBWX2JlbmNoKSwgY29sb3I9XCJwaW5rXCIpICtcbiAgZ2d0aXRsZShcIk9uZSB0aW1lIGludmVzdG1lbnRcIilcbmBgYCJ9 -->
+<pre class="r"><code>ggplot(ov_list, aes(x=id)) + 
+  geom_line(aes(y = PV_tan), color = &quot;darkred&quot;) + 
+  geom_line(aes(y = PV_minvar), color=&quot;steelblue&quot;, linetype=&quot;twodash&quot;) +
+  geom_line(aes(y=PV_bench), color=&quot;pink&quot;) +
+  ggtitle(&quot;One time investment&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
 <div id="exercise-4-active-portfolio-management" class="section level2">
 <h2>Exercise 4: Active Portfolio Management</h2>
 <p>Work through trough the demo <code>demo(relative_ranking)</code>. Use what you lear here, form an appropriate opinion on the ranking of your assets and optimize a Minimum Variance and Maximum Sharpe ratio Portfolio. Which one performs better?</p>
+<p>demo(relative_ranking)</p>
+<p>data(edhec)</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuUiA8LSBlZGhlY1ssMTo0XVxuYGBgIn0= -->
+<pre class="r"><code>R &lt;- edhec[,1:4]</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZnVuZHMgPC0gY29sbmFtZXMoUilcbmBgYCJ9 -->
+<pre class="r"><code>funds &lt;- colnames(R)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>#’ Construct initial portfolio with basic constraints.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuaW5pdC5wb3J0ZiA8LSBwb3J0Zm9saW8uc3BlYyhhc3NldHM9ZnVuZHMpXG5gYGAifQ== -->
+<pre class="r"><code>init.portf &lt;- portfolio.spec(assets=funds)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuaW5pdC5wb3J0ZiA8LSBhZGQuY29uc3RyYWludChwb3J0Zm9saW89aW5pdC5wb3J0ZiwgdHlwZT1cIndlaWdodF9zdW1cIiwgXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICBtaW5fc3VtPTAuOTksIG1heF9zdW09MS4wMSlcbmBgYCJ9 -->
+<pre class="r"><code>init.portf &lt;- add.constraint(portfolio=init.portf, type=&quot;weight_sum&quot;, 
+                              min_sum=0.99, max_sum=1.01)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuaW5pdC5wb3J0ZiA8LSBhZGQuY29uc3RyYWludChwb3J0Zm9saW89aW5pdC5wb3J0ZiwgdHlwZT1cImJveFwiLG1pbj0wLjA1LCBtYXg9MC41KVxuYGBgIn0= -->
+<pre class="r"><code>init.portf &lt;- add.constraint(portfolio=init.portf, type=&quot;box&quot;,min=0.05, max=0.5)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuaW5pdC5wb3J0ZiA8LSBhZGQub2JqZWN0aXZlKHBvcnRmb2xpbz1pbml0LnBvcnRmLCB0eXBlPVwicmlza1wiLCBuYW1lPVwiU3RkRGV2XCIpXG5gYGAifQ== -->
+<pre class="r"><code>init.portf &lt;- add.objective(portfolio=init.portf, type=&quot;risk&quot;, name=&quot;StdDev&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuXG5pbml0LnBvcnRmIDwtIGFkZC5vYmplY3RpdmUocG9ydGZvbGlvPWluaXQucG9ydGYsIHR5cGU9XCJyZXR1cm5cIiwgbmFtZT1cIm1lYW5cIilcblxuaW5pdC5wb3J0ZlxuYGBgIn0= -->
+<pre class="r"><code>
+init.portf &lt;- add.objective(portfolio=init.portf, type=&quot;return&quot;, name=&quot;mean&quot;)
+
+init.portf</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<blockquote>
+<p>#’ Here we express views on the relative rank of the asset returns.</p>
+</blockquote>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYXNzZXQucmFuayA8LSBjKDIsIDMsIDEsIDQpXG5cbmBgYCJ9 -->
+<pre class="r"><code>asset.rank &lt;- c(2, 3, 1, 4)
+</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<blockquote>
+<p>#’ Use Meucci Fully Flexible Views framework to express views on the relative #’ order of asset returns. #’ Define prior probabilities.</p>
+</blockquote>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucCA8LSByZXAoMSAvIG5yb3coUiksIG5yb3coUikpXG5gYGAifQ== -->
+<pre class="r"><code>p &lt;- rep(1 / nrow(R), nrow(R))</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<blockquote>
+<p>#’ Express view on the relative ordering of asset returns</p>
+</blockquote>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubS5tb21lbnRzIDwtIG1ldWNjaS5yYW5raW5nKFIsIHAsIGFzc2V0LnJhbmspXG5cbmBgYCJ9 -->
+<pre class="r"><code>m.moments &lt;- meucci.ranking(R, p, asset.rank)
+</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>#’ Express views using the method described in Almgren and Chriss, &gt; #’ “Portfolios from Sorts”.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIGFjLm1vbWVudHMgPC0gbGlzdCgpXG5cbmFjLm1vbWVudHNcbmBgYCJ9 -->
+<pre class="r"><code> ac.moments &lt;- list()
+
+ac.moments</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYWMubW9tZW50cyRtdSA8LSBhYy5yYW5raW5nKFIsIGFzc2V0LnJhbmspXG5gYGAifQ== -->
+<pre class="r"><code>ac.moments$mu &lt;- ac.ranking(R, asset.rank)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<blockquote>
+<h1 id="sample-estimate-for-second-moment">Sample estimate for second moment</h1>
+</blockquote>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYWMubW9tZW50cyRzaWdtYSA8LSBjb3YoUilcbmBgYCJ9 -->
+<pre class="r"><code>ac.moments$sigma &lt;- cov(R)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<blockquote>
+<p>#’ Generate random portfolios for use in the optimization.</p>
+</blockquote>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucnAgPC0gcmFuZG9tX3BvcnRmb2xpb3MoaW5pdC5wb3J0ZiwgNTAwMClcblxucnBcbmBgYCJ9 -->
+<pre class="r"><code>rp &lt;- random_portfolios(init.portf, 5000)
+
+rp</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<blockquote>
+<p>#’ Run the optimization using first and second moments estimated from #’ Meucci’s Fully Flexible Views framework using the moments we calculated</p>
+</blockquote>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxub3B0Lm1ldWNjaSA8LSBvcHRpbWl6ZS5wb3J0Zm9saW8oUiwgXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBpbml0LnBvcnRmLFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgb3B0aW1pemVfbWV0aG9kPVwicmFuZG9tXCIsIFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcnA9cnAsIFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgdHJhY2U9VFJVRSxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG1vbWVudGFyZ3M9bS5tb21lbnRzKVxuXG5vcHQubWV1Y2NpXG5cblxuYGBgIn0= -->
+<pre class="r"><code>opt.meucci &lt;- optimize.portfolio(R, 
+                                 init.portf,
+                                 optimize_method=&quot;random&quot;, 
+                                 rp=rp, 
+                                 trace=TRUE,
+                                 momentargs=m.moments)
+
+opt.meucci
+</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<blockquote>
+<p>#’ Run the optimization using first moment estimated based on Almgren and Chriss, #’ “Portfolios from Sorts”. The second moment uses the sample estimate.</p>
+</blockquote>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxub3B0LmFjIDwtIG9wdGltaXplLnBvcnRmb2xpbyhSLFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICBpbml0LnBvcnRmLFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICBvcHRpbWl6ZV9tZXRob2Q9XCJyYW5kb21cIixcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcnA9cnAsXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgIHRyYWNlPVRSVUUsXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgIG1vbWVudGFyZ3M9YWMubW9tZW50cylcblxub3B0LmFjXG5cbmBgYCJ9 -->
+<pre class="r"><code>opt.ac &lt;- optimize.portfolio(R,
+                             init.portf,
+                             optimize_method=&quot;random&quot;,
+                             rp=rp,
+                             trace=TRUE,
+                             momentargs=ac.moments)
+
+opt.ac
+</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<blockquote>
+<p>#’ For comparison, run the optimization using sample estimates for first and #’ second moments.</p>
+</blockquote>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxub3B0LnNhbXBsZSA8LSBvcHRpbWl6ZS5wb3J0Zm9saW8oUiwgXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBpbml0LnBvcnRmLCBcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG9wdGltaXplX21ldGhvZD1cInJhbmRvbVwiLCBcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHJwPXJwLFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgdHJhY2U9VFJVRSlcbm9wdC5zYW1wbGVcblxuYGBgIn0= -->
+<pre class="r"><code>opt.sample &lt;- optimize.portfolio(R, 
+                                 init.portf, 
+                                 optimize_method=&quot;random&quot;, 
+                                 rp=rp,
+                                 trace=TRUE)
+opt.sample
+</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<blockquote>
+<p>#’ Here we plot the optimal weights of each optimization.</p>
+</blockquote>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuY2hhcnQuV2VpZ2h0cyhjb21iaW5lLm9wdGltaXphdGlvbnMobGlzdChtZXVjY2k9b3B0Lm1ldWNjaSwgXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgYWM9b3B0LmFjLFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHNhbXBsZT1vcHQuc2FtcGxlKSksIFxuICAgICAgICAgICAgICAgIFxuICAgICAgICAgICAgICBcbnlsaW09YygwLDEpLCBwbG90LnR5cGU9XCJiYXJwbG90XCIpXG5cbmBgYCJ9 -->
+<pre class="r"><code>chart.Weights(combine.optimizations(list(meucci=opt.meucci, 
+                                           ac=opt.ac,
+                                           sample=opt.sample)), 
+                
+              
+ylim=c(0,1), plot.type=&quot;barplot&quot;)
+</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<blockquote>
+<p>#’ Here we define a custom moment function to estimate moments based on #’ relative ranking views. #’ Asset are ranked according to a momentum or reversal view based on the #’ previous n periods.</p>
+</blockquote>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubW9tZW50LnJhbmtpbmcgPC0gZnVuY3Rpb24oUiwgbj0xLCBtb21lbnR1bT1UUlVFLCBtZXRob2Q9YyhcIm1ldWNjaVwiLCBcImFjXCIpKXtcbiAgXG4jIE1vbWVudCBmdW5jdGlvbiB0byBlc3RpbWF0ZSBtb21lbnRzIGJhc2VkIG9uIHJlbGF0aXZlIHJhbmtpbmcgb2YgXG4jIGV4cGVjdGVkIHJldHVybnMuXG4gIFxubWV0aG9kIDwtIG1hdGNoLmFyZyhtZXRob2QpXG4gICBcbiAgICMgVXNlIHRoZSBtb3N0IHJlY2VudCBuIHBlcmlvZHMgb2YgcmV0dXJuc1xuICAgdG1wUiA8LSBhcHBseSh0YWlsKFIsIG4pLCAyLCBmdW5jdGlvbih4KSBwcm9kKDEgKyB4KSAtIDEpXG4gICBcbiAgIGlmKG1vbWVudHVtKXtcbiAgICAgIyBBc3N1bWUgdGhhdCB0aGUgYXNzZXRzIHdpdGggdGhlIGhpZ2hlc3QgcmV0dXJuIHdpbGwgY29udGludWUgdG8gb3V0cGVyZm9ybVxuICAgICBhc3NldC5yYW5rIDwtIG9yZGVyKHRtcFIpXG4gICB9IGVsc2Uge1xuIyBBc3N1bWUgdGhhdCB0aGUgYXNzZXRzIHdpdGggdGhlIGhpZ2hlc3QgcmV0dXJuIHdpbGwgcmV2ZXJzZVxuYXNzZXQucmFuayA8LSByZXYob3JkZXIodG1wUikpXG59XG5zd2l0Y2gobWV0aG9kLFxubWV1Y2NpID0ge1xuICAgICAgICAgICAgIyBNZXVjY2kgRnVsbHkgRmxleGlibGUgVmlld3MgZnJhbWV3b3JrXG4gICAgICAgICAgICAjIFByaW9yIHByb2JhYmlsaXRpZXNcbiAgICAgICAgICAgcCA8LSByZXAoMSAvIG5yb3coUiksIG5yb3coUikpXG4gICAgICAgICAgICBcbiAgICAgICAgICAgICMgUmVsYXRpdmUgb3JkZXJpbmcgdmlld1xuICAgICAgICAgICBtb21lbnRzIDwtIG1ldWNjaS5yYW5raW5nKFIsIHAsIGFzc2V0LnJhbmspXG4gICAgICAgICAgfSxcbiAgICAgICAgICBhYyA9IHtcbiAgICAgICAgICAgICMgQWxtZ3JlbiBhbmQgQ2hyaXNzIFBvcnRmb2xpb3MgZnJvbSBTb3J0c1xuICAgICAgICAgICAgbW9tZW50cyA8LSBsaXN0KClcbiAgICAgICAgICAgIG1vbWVudHMkbXUgPC0gYWMucmFua2luZyhSLCBhc3NldC5yYW5rKVxuICAgICAgICAgICAgIyBTYW1wbGUgZXN0aW1hdGUgZm9yIHNlY29uZCBtb21lbnRcbiAgICAgICAgICAgIG1vbWVudHMkc2lnbWEgPC0gY292KFIpXG4gICAgICAgICB9XG4gICApXG4gICByZXR1cm4obW9tZW50cylcbiB9XG5cblxub3B0LmJ0Lm1ldWNjaVxuYGBgIn0= -->
+<pre class="r"><code>moment.ranking &lt;- function(R, n=1, momentum=TRUE, method=c(&quot;meucci&quot;, &quot;ac&quot;)){
+  
+# Moment function to estimate moments based on relative ranking of 
+# expected returns.
+  
+method &lt;- match.arg(method)
+   
+   # Use the most recent n periods of returns
+   tmpR &lt;- apply(tail(R, n), 2, function(x) prod(1 + x) - 1)
+   
+   if(momentum){
+     # Assume that the assets with the highest return will continue to outperform
+     asset.rank &lt;- order(tmpR)
+   } else {
+# Assume that the assets with the highest return will reverse
+asset.rank &lt;- rev(order(tmpR))
+}
+switch(method,
+meucci = {
+            # Meucci Fully Flexible Views framework
+            # Prior probabilities
+           p &lt;- rep(1 / nrow(R), nrow(R))
+            
+            # Relative ordering view
+           moments &lt;- meucci.ranking(R, p, asset.rank)
+          },
+          ac = {
+            # Almgren and Chriss Portfolios from Sorts
+            moments &lt;- list()
+            moments$mu &lt;- ac.ranking(R, asset.rank)
+            # Sample estimate for second moment
+            moments$sigma &lt;- cov(R)
+         }
+   )
+   return(moments)
+ }
+
+
+opt.bt.meucci</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<blockquote>
+<p>#’ Here we run out of sample backtests to test the out of sample performance using the different frameworks to express our views on relative asset return ranking.</p>
+</blockquote>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHQuYnQubWV1Y2NpIDwtIG9wdGltaXplLnBvcnRmb2xpby5yZWJhbGFuY2luZyhSLCBpbml0LnBvcnRmLCBcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgb3B0aW1pemVfbWV0aG9kPVwicmFuZG9tXCIsICBcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcmViYWxhbmNlX29uPVwicXVhcnRlcnNcIiwgXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHRyYWluaW5nX3BlcmlvZD0xMDAsXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHJwPXJwLFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBtb21lbnRGVU49XCJtb21lbnQucmFua2luZ1wiLFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBuPTIsXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG1vbWVudHVtPVRSVUUsXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG1ldGhvZD1cIm1ldWNjaVwiKVxucHQuYnQubWV1Y2NpXG5cbmBgYCJ9 -->
+<pre class="r"><code>pt.bt.meucci &lt;- optimize.portfolio.rebalancing(R, init.portf, 
+                                               optimize_method=&quot;random&quot;,  
+                                               rebalance_on=&quot;quarters&quot;, 
+                                               training_period=100,
+                                               rp=rp,
+                                               momentFUN=&quot;moment.ranking&quot;,
+                                               n=2,
+                                               momentum=TRUE,
+                                               method=&quot;meucci&quot;)
+pt.bt.meucci
+</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxub3B0LmJ0LmFjIDwtIG9wdGltaXplLnBvcnRmb2xpby5yZWJhbGFuY2luZyhSLCBpbml0LnBvcnRmLCBcbm9wdGltaXplX21ldGhvZD1cInJhbmRvbVwiLCBcbnJlYmFsYW5jZV9vbj1cInF1YXJ0ZXJzXCIsIFxucnA9cnAsXG5tb21lbnRGVU49XCJtb21lbnQucmFua2luZ1wiLFxubj0yLFxubW9tZW50dW09VFJVRSxcbm1ldGhvZD1cImFjXCIpXG5gYGAifQ== -->
+<pre class="r"><code>opt.bt.ac &lt;- optimize.portfolio.rebalancing(R, init.portf, 
+optimize_method=&quot;random&quot;, 
+rebalance_on=&quot;quarters&quot;, 
+rp=rp,
+momentFUN=&quot;moment.ranking&quot;,
+n=2,
+momentum=TRUE,
+method=&quot;ac&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuXG5vcHQuYnQuc2FtcGxlIDwtIG9wdGltaXplLnBvcnRmb2xpby5yZWJhbGFuY2luZyhSLCBpbml0LnBvcnRmLCBcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBvcHRpbWl6ZV9tZXRob2Q9XCJyYW5kb21cIiwgXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcmViYWxhbmNlX29uPVwicXVhcnRlcnNcIiwgXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgdHJhaW5pbmdfcGVyaW9kPTEwMCxcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBycD1ycClcbmBgYCJ9 -->
+<pre class="r"><code>
+opt.bt.sample &lt;- optimize.portfolio.rebalancing(R, init.portf, 
+                                                 optimize_method=&quot;random&quot;, 
+                                                 rebalance_on=&quot;quarters&quot;, 
+                                                 training_period=100,
+                                                 rp=rp)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<blockquote>
+<p>#’ Compute returns and chart performance summary.</p>
+</blockquote>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucmV0Lm1ldWNjaSA8LSBSZXR1cm4ucG9ydGZvbGlvKFIsIGV4dHJhY3RXZWlnaHRzKG9wdC5idC5tZXVjY2kpKVxuYGBgIn0= -->
+<pre class="r"><code>ret.meucci &lt;- Return.portfolio(R, extractWeights(opt.bt.meucci))</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucmV0LmFjIDwtIFJldHVybi5wb3J0Zm9saW8oUiwgZXh0cmFjdFdlaWdodHMob3B0LmJ0LmFjKSlcbmBgYCJ9 -->
+<pre class="r"><code>ret.ac &lt;- Return.portfolio(R, extractWeights(opt.bt.ac))</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucmV0LnNhbXBsZSA8LSBSZXR1cm4ucG9ydGZvbGlvKFIsIGV4dHJhY3RXZWlnaHRzKG9wdC5idC5zYW1wbGUpKVxuYGBgIn0= -->
+<pre class="r"><code>ret.sample &lt;- Return.portfolio(R, extractWeights(opt.bt.sample))</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucmV0IDwtIGNiaW5kKHJldC5tZXVjY2ksIHJldC5hYywgcmV0LnNhbXBsZSlcbmBgYCJ9 -->
+<pre class="r"><code>ret &lt;- cbind(ret.meucci, ret.ac, ret.sample)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuY29sbmFtZXMocmV0KSA8LSBjKFwibWV1Y2NpLnJhbmtcIiwgXCJhYy5yYW5rXCIsIFwic2FtcGxlXCIpXG5gYGAifQ== -->
+<pre class="r"><code>colnames(ret) &lt;- c(&quot;meucci.rank&quot;, &quot;ac.rank&quot;, &quot;sample&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuY2hhcnRzLlBlcmZvcm1hbmNlU3VtbWFyeShyZXQsIG1haW49XCJSYW5raW5nIFZpZXdzIFBlcmZvcm1hbmNlXCIpXG5gYGAifQ== -->
+<pre class="r"><code>charts.PerformanceSummary(ret, main=&quot;Ranking Views Performance&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 </div>
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiUG9ydGZvbGlvbWFuYWdlbWVudCBhbmQgRmluYW5jaWFsIEFuYWx5c2lzIC0gQXNzaWdubWVudCA3IgpzdWJ0aXRsZTogIlN1Ym1pdCB1bnRpbCBNb25kYXkgMjAyMC0xMS0yMywgMTM6MDAiCmF1dGhvcjogIkxhc3RuYW1lLCBTdXJuYW1lIgpvdXRwdXQ6IGh0bWxfbm90ZWJvb2sKLS0tCiAgCmBgYHtyIHNldHVwfQojcmVtb3Rlczo6aW5zdGFsbF9naXRodWIoImJyYXZlcm9jay9GYWN0b3JBbmFseXRpY3MiLCAgYnVpbGRfdmlnbmV0dGVzID0gVFJVRSwgZm9yY2UgPSBUUlVFKQpwYWNtYW46OnBfbG9hZCh0aWR5dmVyc2UsdGlkeXF1YW50LEZGZG93bmxvYWQsRmFjdG9yQW5hbHl0aWNzLFBlcmZvcm1hbmNlQW5hbHl0aWNzKQpgYGAKCioqUGxlYXNlKiogcmVtZW1iZXIgdG8gcHV0IHlvdXIgYXNzaWdubWVudCBzb2x1dGlvbnMgaW4gYHJtZGAgZm9ybWF0IHVzaW5nICoqbWFueSoqIGNodW5rcyBhbmQgcHV0dGluZyByZWFkYWJsZSB0ZXh0IGluIGJldHdlZW4sIHNpbWlsYXIgdG8gbXkgZXhhbXBsZXMgZ2l2ZW4gaW4gUmVzZWFyY2ggTWV0aG9kcyBhbmQgQXNzaWdubWVudCAxIQoKRm9yIGFsbCBleGVyY2lzZXM6IFBsZWFzZSB1c2UgdGhlIEFzc2lnbm1lbnQtRm9ydW0gdG8gcG9zdCB5b3VyIHF1ZXN0aW9ucywgSSB3aWxsIHRyeSBteSBiZXN0IHRvIGhlbHAgeW91IGFsb25nIQoKIyMgRXhlcmNpc2UgMTogQW5hbHlzaW5nIHRoZSBDQVBNCgpJbiB0aGlzIGV4ZXJjaXNlIHdlIHdhbnQgdG8gZXN0aW1hdGUgdGhlIENBUE0uIFBsZWFzZSByZWFkIGNhcmVmdWxseSB0aHJvdWdoIHRoZSB0d28gZG9jdW1lbnRzIHByb3ZpZGVkIChyaWdodCBoYW5kIHNpZGU6IGZpbGVzKS4gVGhlbiB3ZSBzdGFydCB0byBjb2xsZWN0IHRoZSBuZWNlc3NhcnkgZGF0YToKICAKYSkgRnJvbSBEYXRhc3RyZWFtIGdldCB0aGUgbGFzdCAxMCB5ZWFycyBvZiBkYXRhIGZyb20gdGhlIDEwMCBzdG9ja3Mgb2YgdGhlIFMmUDEwMCB1c2luZyB0aGUgbGlzdCBgTFMmUDEwMElgIChTJlAgMTAwKTogdG90YWwgcmV0dXJuIGluZGV4IChSSSkgYW5kIG1hcmtldCBjYXAgKE1WKQpiKSBGdXJ0aGVyIGltcG9ydCB0aGUgRmFtYS1GcmVuY2gtRmFjdG9ycyBmcm9tIEtlbm5ldGggRnJlbmNocyBob21lcGFnZSAobW9udGhseSwgZS5nLiB1c2luZyBgRkZkb3dubG9hZGApLiBGcm9tIGJvdGggZGF0YXNldHMgd2Ugc2VsZWN0IGRhdGEgZm9yIHRoZSBsYXN0IChhdmFpbGFibGUpIDYwIG1vbnRocywgY2FsY3VsYXRlIHJldHVybnMgKHNpbXBsZSBwZXJjZW50YWdlKSBmb3IgdGhlIFVTLVN0b2NrcyBhbmQgZWxpbWluYXRlIHRob3NlIHN0b2NrcyB0aGF0IGhhdmUgTkFzIGZvciB0aGlzIHBlcmlvZC4KYykgTm93IHN1YnRyYWN0IHRoZSByaXNrLWZyZWUgcmF0ZSBmcm9tIGFsbCB0aGUgc3RvY2tzLiBUaGVuIGVzdGltYXRlIGVhY2ggc3RvY2tzIGJldGEgd2l0aCB0aGUgbWFya2V0OiBSZWdyZXNzIGFsbCBzdG9jayBleGNlc3MgcmV0dXJucyBvbiB0aGUgbWFya2V0IGV4Y2VzcyByZXR1cm4gYW5kIHNhdmUgYWxsIGJldGFzIChvcHRpbWFsbHkgdXNlIGBtdXRhdGVgIGFuZCBgbWFwYCBpbiBjb21iaW5hdGlvbiB3aXRoIGBsbWApLiBFc3RpbWF0ZSB0aGUgbWVhbi1yZXR1cm4gZm9yIGVhY2ggc3RvY2sgYW5kIHBsb3QgdGhlIHJldHVybi9iZXRhLWNvbWJpbmF0aW9ucy4gQ3JlYXRlIHRoZSBzZWN1cml0eSBtYXJrZXQgbGluZSBhbmQgaW5jbHVkZSBpdCBpbiB0aGUgcGxvdCEgV2hhdCBkbyB5b3UgZmluZD8KZCkgSW4gYSBuZXh0IHN0ZXAgKGZvbGxvd2luZyBib3RoIGRvY3VtZW50cyksIHdlIHNvcnQgdGhlIHN0b2NrcyBhY2NvcmRpbmcgdG8gdGhlaXIgYmV0YSBhbmQgYnVpbGQgdGVuIHZhbHVlLXdlaWdodGVkIHBvcnRmb2xpb3MgKHdpdGggbW9yZSBvciBsZXNzIHRoZSBzYW1lIG51bWJlciBvZiBzdG9ja3MpLiBSZXBlYXQgYSkgZm9yIHRoZSB0ZW4gcG9ydGZvbGlvcy4gV2hhdCBkbyB5b3Ugb2JzZXJ2ZT8KZSkgSW4gdGhlIHRoaXJkIHN0ZXAgeW91IGZvbGxvdyBwYWdlIDYtOCBvZiB0aGUgc2Vjb25kIGRvY3VtZW50IGFuZCBlc3RpbWF0ZSB0aGUgc2Vjb25kLXBhc3MgcmVncmVzc2lvbiB3aXRoIHRoZSBtYXJrZXQgYW5kIHRoZW4gbWFya2V0ICYgaWRpb3N5bmNyYXRpYyByaXNrLiBXaGF0IGRvIHlvdSBvYnNlcnZlPyBQcmVzZW50IGFsbCB5b3VyIHJlc3VsdHMgaW4gYSBzaW1pbGFyIGZhc2hpb24gYXMgaW4gdGhlIGRvY3VtZW50LgoKIyMgRXhlcmNpc2UgMjogUGVyZm9ybWFuY2UgRXZhbHVhdGlvbiBJCgpSZWFkIENoYXB0ZXIgMjQgb2Ygb3VyIGJvb2suIEluIHRoaXMgZXhlcmNpc2UgdXNlIGEgTWluaW11bSBWYXJpYW5jZSBhbmQgYSBUYW5nZWN5IChtYXhpdW0gU2hhcnBlIFJhdGlvKSBwb3J0Zm9saW8gY2FsY3VsYXRlIGZyb20geW91ciBzdG9ja3MsIGFzIHdlbGwgYXMgdGhlIFMmUDUwMCBhcyBhIGJlbmNobWFyayAoUGVyaW9kIDIwMDAtMDEtMDEgLSAyMDIwLTAxLTExKS4gRm9yIGFsbCB0aHJlZSBJbnZlc3RtZW50IE9wcG9ydHVuaXRpZXMgaW1hZ2luZSB5b3UgaW52ZXN0IDEwMFVTRCBwZXIgbW9udGggaW50byB0aGUgcG9ydGZvbGlvLiBXaGF0IGlzIHRoZSBvdmVyYWxsIHJldHVybiB0aGlzIGludmVzdG1lbnQgcHJvdmlkZXMgeW91PyBIb3cgbXVjaCBzaG91bGQgeW91IGhhdmUgaW52ZXN0ZCBhdCB0aGUgYmdpbm5pbmcgKG9uZS10aW1lIGludmVzdG1lbnQpIHRvIGdldCB0aGUgZWFjdCBzYW1lIG92ZXJhbGwgd2VhbHRoIGF0IHRoZSBlbmQgb2YgMjAyMD8gQ2FuIHlvdSBwbG90IGJvdGggd2VhbHRoIGRldmVsb3BtZW50cyBvdmVyIHRpbWU/CgojIyBFeGVyY2lzZSAzOiBQZXJmb3JtYW5jZSBFdmFsdWF0aW9uIElJCgpGb3IgdGhlIHNhbWUgdHdvIHBvcnRmb2xpb3MgYW5kIHRoZSBhcHByb3ByaWF0ZSBiZW5jaG1hcmsgY2FsY3VsYXRlIG92ZXJhbGwgcGVyZm9ybWFuY2UgbWVhc3VyZXMgKFNoYXJwZSByYXRpbywgTTIgW2Fzc3VtZSBhIHJpc2stZnJlIHJhdGUgb2YgMF0sIFRyZXlub3IgUmF0aW8sIEplbnNlbidzIEFscGhhIGFuZCBJbmZvcm1hdGlvbiByYXRpbykuIEludGVycHJldC4gQWRkaXRpb25hbCBkbyB0aGUgdHdvIG1hcmtldCB0aW1pbmcgcmVncmVzc2lvbnMgKGNoIDI0LjQpIGFuZCBzZWUgd2hldGhlciB5b3VyIHBvcnRmb2xpb3MgY2FuICJ0aW1lIiB0aGUgbWFya2V0LgoKIyMgRXhlcmNpc2UgNDogQWN0aXZlIFBvcnRmb2xpbyBNYW5hZ2VtZW50CgpXb3JrIHRocm91Z2ggdHJvdWdoIHRoZSBkZW1vIGBkZW1vKHJlbGF0aXZlX3JhbmtpbmcpYC4gVXNlIHdoYXQgeW91IGxlYXIgaGVyZSwgZm9ybSBhbiBhcHByb3ByaWF0ZSBvcGluaW9uIG9uIHRoZSByYW5raW5nIG9mIHlvdXIgYXNzZXRzIGFuZCBvcHRpbWl6ZSBhIE1pbmltdW0gVmFyaWFuY2UgYW5kIE1heGltdW0gU2hhcnBlIHJhdGlvIFBvcnRmb2xpby4gV2hpY2ggb25lIHBlcmZvcm1zIGJldHRlcj8KCgoKCg==</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiUG9ydGZvbGlvbWFuYWdlbWVudCBhbmQgRmluYW5jaWFsIEFuYWx5c2lzIC0gQXNzaWdubWVudCA3IgpzdWJ0aXRsZTogIlN1Ym1pdCB1bnRpbCBNb25kYXkgMjAyMC0xMS0yMywgMTM6MDAiCmF1dGhvcjogIkxhc3RuYW1lLCBTdXJuYW1lIgpvdXRwdXQ6IGh0bWxfbm90ZWJvb2sKLS0tCiAgCmBgYHtyIHNldHVwfQojcmVtb3Rlczo6aW5zdGFsbF9naXRodWIoImJyYXZlcm9jay9GYWN0b3JBbmFseXRpY3MiLCAgYnVpbGRfdmlnbmV0dGVzID0gVFJVRSwgZm9yY2UgPSBUUlVFKQpwYWNtYW46OnBfbG9hZCh0aWR5dmVyc2UsdGlkeXF1YW50LEZGZG93bmxvYWQsRmFjdG9yQW5hbHl0aWNzLFBlcmZvcm1hbmNlQW5hbHl0aWNzKQpgYGAKCioqUGxlYXNlKiogcmVtZW1iZXIgdG8gcHV0IHlvdXIgYXNzaWdubWVudCBzb2x1dGlvbnMgaW4gYHJtZGAgZm9ybWF0IHVzaW5nICoqbWFueSoqIGNodW5rcyBhbmQgcHV0dGluZyByZWFkYWJsZSB0ZXh0IGluIGJldHdlZW4sIHNpbWlsYXIgdG8gbXkgZXhhbXBsZXMgZ2l2ZW4gaW4gUmVzZWFyY2ggTWV0aG9kcyBhbmQgQXNzaWdubWVudCAxIQoKRm9yIGFsbCBleGVyY2lzZXM6IFBsZWFzZSB1c2UgdGhlIEFzc2lnbm1lbnQtRm9ydW0gdG8gcG9zdCB5b3VyIHF1ZXN0aW9ucywgSSB3aWxsIHRyeSBteSBiZXN0IHRvIGhlbHAgeW91IGFsb25nIQoKIyMgRXhlcmNpc2UgMTogQW5hbHlzaW5nIHRoZSBDQVBNCgpJbiB0aGlzIGV4ZXJjaXNlIHdlIHdhbnQgdG8gZXN0aW1hdGUgdGhlIENBUE0uIFBsZWFzZSByZWFkIGNhcmVmdWxseSB0aHJvdWdoIHRoZSB0d28gZG9jdW1lbnRzIHByb3ZpZGVkIChyaWdodCBoYW5kIHNpZGU6IGZpbGVzKS4gVGhlbiB3ZSBzdGFydCB0byBjb2xsZWN0IHRoZSBuZWNlc3NhcnkgZGF0YToKICAKYSkgRnJvbSBEYXRhc3RyZWFtIGdldCB0aGUgbGFzdCAxMCB5ZWFycyBvZiBkYXRhIGZyb20gdGhlIDEwMCBzdG9ja3Mgb2YgdGhlIFMmUDEwMCB1c2luZyB0aGUgbGlzdCBgTFMmUDEwMElgIChTJlAgMTAwKTogdG90YWwgcmV0dXJuIGluZGV4IChSSSkgYW5kIG1hcmtldCBjYXAgKE1WKQpiKSBGdXJ0aGVyIGltcG9ydCB0aGUgRmFtYS1GcmVuY2gtRmFjdG9ycyBmcm9tIEtlbm5ldGggRnJlbmNocyBob21lcGFnZSAobW9udGhseSwgZS5nLiB1c2luZyBgRkZkb3dubG9hZGApLiBGcm9tIGJvdGggZGF0YXNldHMgd2Ugc2VsZWN0IGRhdGEgZm9yIHRoZSBsYXN0IChhdmFpbGFibGUpIDYwIG1vbnRocywgY2FsY3VsYXRlIHJldHVybnMgKHNpbXBsZSBwZXJjZW50YWdlKSBmb3IgdGhlIFVTLVN0b2NrcyBhbmQgZWxpbWluYXRlIHRob3NlIHN0b2NrcyB0aGF0IGhhdmUgTkFzIGZvciB0aGlzIHBlcmlvZC4KYykgTm93IHN1YnRyYWN0IHRoZSByaXNrLWZyZWUgcmF0ZSBmcm9tIGFsbCB0aGUgc3RvY2tzLiBUaGVuIGVzdGltYXRlIGVhY2ggc3RvY2tzIGJldGEgd2l0aCB0aGUgbWFya2V0OiBSZWdyZXNzIGFsbCBzdG9jayBleGNlc3MgcmV0dXJucyBvbiB0aGUgbWFya2V0IGV4Y2VzcyByZXR1cm4gYW5kIHNhdmUgYWxsIGJldGFzIChvcHRpbWFsbHkgdXNlIGBtdXRhdGVgIGFuZCBgbWFwYCBpbiBjb21iaW5hdGlvbiB3aXRoIGBsbWApLiBFc3RpbWF0ZSB0aGUgbWVhbi1yZXR1cm4gZm9yIGVhY2ggc3RvY2sgYW5kIHBsb3QgdGhlIHJldHVybi9iZXRhLWNvbWJpbmF0aW9ucy4gQ3JlYXRlIHRoZSBzZWN1cml0eSBtYXJrZXQgbGluZSBhbmQgaW5jbHVkZSBpdCBpbiB0aGUgcGxvdCEgV2hhdCBkbyB5b3UgZmluZD8KZCkgSW4gYSBuZXh0IHN0ZXAgKGZvbGxvd2luZyBib3RoIGRvY3VtZW50cyksIHdlIHNvcnQgdGhlIHN0b2NrcyBhY2NvcmRpbmcgdG8gdGhlaXIgYmV0YSBhbmQgYnVpbGQgdGVuIHZhbHVlLXdlaWdodGVkIHBvcnRmb2xpb3MgKHdpdGggbW9yZSBvciBsZXNzIHRoZSBzYW1lIG51bWJlciBvZiBzdG9ja3MpLiBSZXBlYXQgYSkgZm9yIHRoZSB0ZW4gcG9ydGZvbGlvcy4gV2hhdCBkbyB5b3Ugb2JzZXJ2ZT8KZSkgSW4gdGhlIHRoaXJkIHN0ZXAgeW91IGZvbGxvdyBwYWdlIDYtOCBvZiB0aGUgc2Vjb25kIGRvY3VtZW50IGFuZCBlc3RpbWF0ZSB0aGUgc2Vjb25kLXBhc3MgcmVncmVzc2lvbiB3aXRoIHRoZSBtYXJrZXQgYW5kIHRoZW4gbWFya2V0ICYgaWRpb3N5bmNyYXRpYyByaXNrLiBXaGF0IGRvIHlvdSBvYnNlcnZlPyBQcmVzZW50IGFsbCB5b3VyIHJlc3VsdHMgaW4gYSBzaW1pbGFyIGZhc2hpb24gYXMgaW4gdGhlIGRvY3VtZW50LgoKIyMgRXhlcmNpc2UgMjogUGVyZm9ybWFuY2UgRXZhbHVhdGlvbiBJCgpSZWFkIENoYXB0ZXIgMjQgb2Ygb3VyIGJvb2suIEluIHRoaXMgZXhlcmNpc2UgdXNlIGEgTWluaW11bSBWYXJpYW5jZSBhbmQgYSBUYW5nZWN5IChtYXhpdW0gU2hhcnBlIFJhdGlvKSBwb3J0Zm9saW8gY2FsY3VsYXRlIGZyb20geW91ciBzdG9ja3MsIGFzIHdlbGwgYXMgdGhlIFMmUDUwMCBhcyBhIGJlbmNobWFyayAoUGVyaW9kIDIwMDAtMDEtMDEgLSAyMDIwLTAxLTExKS4gRm9yIGFsbCB0aHJlZSBJbnZlc3RtZW50IE9wcG9ydHVuaXRpZXMgaW1hZ2luZSB5b3UgaW52ZXN0IDEwMFVTRCBwZXIgbW9udGggaW50byB0aGUgcG9ydGZvbGlvLiBXaGF0IGlzIHRoZSBvdmVyYWxsIHJldHVybiB0aGlzIGludmVzdG1lbnQgcHJvdmlkZXMgeW91PyBIb3cgbXVjaCBzaG91bGQgeW91IGhhdmUgaW52ZXN0ZCBhdCB0aGUgYmdpbm5pbmcgKG9uZS10aW1lIGludmVzdG1lbnQpIHRvIGdldCB0aGUgZWFjdCBzYW1lIG92ZXJhbGwgd2VhbHRoIGF0IHRoZSBlbmQgb2YgMjAyMD8gQ2FuIHlvdSBwbG90IGJvdGggd2VhbHRoIGRldmVsb3BtZW50cyBvdmVyIHRpbWU/CgojIyBFeGVyY2lzZSAzOiBQZXJmb3JtYW5jZSBFdmFsdWF0aW9uIElJCgpGb3IgdGhlIHNhbWUgdHdvIHBvcnRmb2xpb3MgYW5kIHRoZSBhcHByb3ByaWF0ZSBiZW5jaG1hcmsgY2FsY3VsYXRlIG92ZXJhbGwgcGVyZm9ybWFuY2UgbWVhc3VyZXMgKFNoYXJwZSByYXRpbywgTTIgW2Fzc3VtZSBhIHJpc2stZnJlIHJhdGUgb2YgMF0sIFRyZXlub3IgUmF0aW8sIEplbnNlbidzIEFscGhhIGFuZCBJbmZvcm1hdGlvbiByYXRpbykuIEludGVycHJldC4gQWRkaXRpb25hbCBkbyB0aGUgdHdvIG1hcmtldCB0aW1pbmcgcmVncmVzc2lvbnMgKGNoIDI0LjQpIGFuZCBzZWUgd2hldGhlciB5b3VyIHBvcnRmb2xpb3MgY2FuICJ0aW1lIiB0aGUgbWFya2V0LgoKRmlyc3Qgb2YgYWxsLCBJIGFtIGdvaW5nIHRvIGRvd25sb2FkIGFsbCB0aGUgY3J1Y2lhbCBkYXRhLCB3aGljaCB3ZSBuZWVkIGluIG9yZGVyIHRvIGNyZWF0ZSB0aGUgdGhyZWUgcG9ydGZvbGlvcy4gTXkgcGVyc29uYWwgc3RvY2sgY2hvaWNlIGFyZSBBcHBsZSwgTml2aWRpYSwgTWljcm9zb2Z0LCBBbWVyaWNhbiBFeHByZXNzLCBXYWxtYXJ0LCBCYW5rIG9mIEFtZXJpY2EsIE1vcmdhbiBTdGFubGV5LCBEaXNuZXksIEV4eG9uIE1vYmlsZS4gQXMgdGhlIGJlbmNobWFyayB3ZSB0YWtlIHRoZSBTJlA1MDAsIHJlZ2FyZGluZyB0byB0aGUgdW5kZXJsaW5nIHRhc2suIApgYGB7ciBDaG9vc2luZyBteSBwZXJzb25hbCBzZXQgb2Ygc3RvY2tzfQppbnN0YWxsLnBhY2thZ2VzKCJGaW5DYWwiLGRlcGVuZGVuY2llcz1UUlVFKQpsaWJyYXJ5KHRpbWV0ayxQb3J0Zm9saW9BbmFseXRpY3MpClNQNTAwIDwtIHRxX2luZGV4KCJTUDUwMCIpCnN0b2NrX25hbWVzIDwtIGMoIkFBUEwiLCAiTlZEQSIsICJNU0ZUIiwgIkFYUCIsICJXTVQiLCAiQkFDIiwgIkdTIiwiTVMiLCAiRElTIiwgIlhPTSIpCmBgYAoKYGBge3IgUmV0dXJuIENhbGN1bGF0aW9uIG9mIHRoZSBzdG9ja3N9CnN0b2NrX3JldHVybnMgPC10cV9nZXQoeCA9IHN0b2NrX25hbWVzLGdldCAgPSAic3RvY2sucHJpY2VzIiwgZnJvbSA9ICIyMDAwLTAxLTAxIiwgdG8gICA9ICIyMDIwLTExLTE4IikgJT4lCiAgICBncm91cF9ieShzeW1ib2wpICU+JQogICAgdHFfdHJhbnNtdXRlKHNlbGVjdCAgICAgPSBhZGp1c3RlZCwgCiAgICAgICAgICAgICAgICAgbXV0YXRlX2Z1biA9IHBlcmlvZFJldHVybiwgCiAgICAgICAgICAgICAgICAgcGVyaW9kICAgICA9ICJtb250aGx5IikKdW5pcXVlKHN0b2NrX3JldHVybnMkc3ltYm9sKQoKc3RvY2tfcmV0dXJuc194dHMgPC0gc3RvY2tfcmV0dXJucyAlPiUKICAgICAgICAgICAgICAgICAgICAgIHN1YnNldCggc2VsZWN0ID0gYyhzeW1ib2wsZGF0ZSwgbW9udGhseS5yZXR1cm5zKSkgJT4lIAogICAgICAgICAgICAgICAgICAgICAgcGl2b3Rfd2lkZXIobmFtZXNfZnJvbSA9IHN5bWJvbCwgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB2YWx1ZXNfZnJvbSA9IG1vbnRobHkucmV0dXJucykgJT4lIAogICAgICAgICAgICAgICAgICAgICAgdGtfeHRzKGRhdGVfdmFyID0gZGF0ZSwgc2lsZW50ID0gVFJVRSkKc3RvY2tfcmV0dXJuc194dHMKYGBgCmBgYHtyIE1heGltdW0gUmV0dXJufQpwb3J0IDwtIHBvcnRmb2xpby5zcGVjKGFzc2V0cz1zdG9ja19uYW1lcyklPiUKICBhZGQuY29uc3RyYWludCh0eXBlPSJmdWxsX2ludmVzdG1lbnQiKSAlPiUgI0luIG91ciBhcHByb2FjaCB3ZSB1c2UgZnVsbF9pbnZlc3RtZW50IGFzIG91ciB0YXNrIGl0IGlzCiAgYWRkLmNvbnN0cmFpbnQodHlwZT0ibG9uZ19vbmx5IikgJT4lICNXZSBkbyBub3QgdGFrZSBhbnkgc2hvcnQtc2VsbGluZwogIGFkZC5vYmplY3RpdmUodHlwZT0icmV0dXJuIiwgbmFtZT0ibWVhbiIpCnBvcnQKYGBgCgpOb3cgSSBkZWZpbmVkIHRoZSBpbnZlc3RtZW50IGNvbnN0cmFpbnMgZm9yIG91ciBpbnZlc3RtZW50cywgd2hpY2ggaXMgYmFzZWQgb24gb3VyIHRhc2sgYSBmdWxsIGludmVzdG1lbnQgY29uc3RyYWluZWQsIGR1ZSB0byB0aGUgZmFjdCB0aGF0IHdlIHdvdWxkIGxpa2UgdG8gYmUgZnVsbHkgaW52ZXN0ZWQgdGhlIHdob2xlIHBlcmlvZC4gVGhlIGxvbmcgb25seSBjb25zdHJhaW4gY29tZXMgZnJvbSB0aGUgaWRlYSB0aGF0IHdlIGFyZSBqdXN0IGNhcmluZyBhYm91dCB0aGUgdXBwZXIgcGFydCBvZiB0aGUgZWZmaWNpZW50IGZyb250aWVyLCBpbiBvcmRlciB0byBjb25zdHJ1Y3QgdGhlIHRhbmdlbmN5IHBvcnRmb2xpbywgd2hpY2ggaXMgdGhlIF9fbW9zdCBlZmZpY2llbnRfXyB3YXkgdG8gc2V0IG91ciAxMCBzdG9ja3MgdG9nZXRoZXIgY29uY2VybmluZyB0aGUgZmFjZWQgcmlza2VkLiBTbywgaW4gb3JkZXIgd29yZHMgdGhlIHRhbmdlbmN5IHBvcnRmb2xpbyBtYXhpbWl6ZXMgdGhlIFNoYXJwZSBSYXRpby4gVGhlIHNlY29uZCBwb3J0Zm9saW8gd2UgaGF2ZSB0byBjb25zdHJ1Y3QgaXMgdGhlIE1pbmltdW0tVmFyaWFuY2UgUG9ydGZvbGlvLiBUaGUgXyJ0aGlyZCJfIHBvcnRmb2xpbyB3b3VsZCBiZSBhbiBhYnNvbHV0ZSBwYXNzaXZlIHN0cmF0ZWd5IHdlIHdvdWxkIGp1c3QgaW52ZXN0IGluIHRoZSBTUDUwMC4KCmBgYHtyIH0Kb3B0X3BvcnQgPC0gb3B0aW1pemUucG9ydGZvbGlvKFI9c3RvY2tfcmV0dXJuc194dHMsIHBvcnRmb2xpbz1wb3J0LAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBvcHRpbWl6ZV9tZXRob2Q9IlJPSSIsIHRyYWNlPVRSVUUpCm9wdF9wb3J0CmBgYApTbywgYXMgd2Ugc2VlIHdlIHdvdWxkIG1ha2UgdGhlIG1vc3QgbW9uZXkgaWYgd2Ugd291bGQganVzdCBldmVyeXRoaW5nIGluIE5pdmlkaWEuIEhvd2V2ZXIsIHdlIGRvIG5vdCBsb29rIGZvciB0aGUgbWF4aW11bSByZXR1cm4sIHdlIGxvb2sgZm9yIHRoZSBtYXhpbXVtIHJldHVybiBpbiByZWxhdGlvbiB0byB0aGUgdGFrZW4gcmlzay4KCmBgYHtyfQpwbG90KG9wdF9wb3J0LCBjaGFydC5hc3NldHM9VFJVRSwgbWFpbj0iTWF4aW11bSBSZXR1cm4iLCAKICAgICAgeGxpbT1jKDAsIDAuMiksIHlsaW09YygwLDAuNSkpCmBgYApgYGB7ciBSaXNrIFJld2FyZCB0cmFkZSBvZn0KY2hhcnQuUmlza1Jld2FyZChvcHRfcG9ydCxyZXR1cm4uY29sPSJtZWFuIiwgcmlzay5jb2w9InNkIiwKICAgICAgICAgICAgICAgICBjaGFydC5hc3NldHM9VFJVRSwgCiAgICAgICAgICAgICAgICAgeGxpbT1jKDAsIDAuMjUpLAogICAgICAgICAgICAgICAgIG1haW49Ik1heGltdW0gUmV0dXJuIikKYGBgCgpgYGB7cn0KZnJvbnRpZXIgPC0gY3JlYXRlLkVmZmljaWVudEZyb250aWVyKFI9c3RvY2tfcmV0dXJuc194dHMsIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBwb3J0Zm9saW89cG9ydCwgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHR5cGU9Im1lYW4tU3RkRGV2IikKY2hhcnQuRWZmaWNpZW50RnJvbnRpZXIoZnJvbnRpZXIsIG1hdGNoLmNvbD0iU3RkRGV2IiwgdHlwZT0ibCIscmYgPSAwLCB0YW5nZW50LmxpbmUgPSBUUlVFLCBjaGFydC5hc3NldHMgPSBUUlVFLCkKYGBgClRoZSBlZmZpY2llbnQgZnJvbnRpZXIgaXMgdGhlIHNldCBvZiBvcHRpbWFsIHBvcnRmb2xpb3MgdGhhdCBvZmZlciB0aGUgaGlnaGVzdCBleHBlY3RlZCByZXR1cm4gZm9yIGEgZGVmaW5lZCBsZXZlbCBvZiByaXNrIG9yIHRoZSBsb3dlc3QgcmlzayBmb3IgYSBnaXZlbiBsZXZlbCBvZiBleHBlY3RlZCByZXR1cm4uIFBvcnRmb2xpb3MgdGhhdCBsaWUgYmVsb3cgdGhlIGVmZmljaWVudCBmcm9udGllciBhcmUgc3ViLW9wdGltYWwgYmVjYXVzZSB0aGV5IGRvIG5vdCBwcm92aWRlIGVub3VnaCByZXR1cm4gZm9yIHRoZSBsZXZlbCBvZiByaXNrLgoKYGBge3IgVGFuZ2VuY3kgUG9ydGZvbGlvfQpwb3J0X3RhbiA8LSBwb3J0Zm9saW8uc3BlYyhhc3NldHM9c3RvY2tfbmFtZXMpICU+JQogIGFkZC5jb25zdHJhaW50KHR5cGU9ImZ1bGxfaW52ZXN0bWVudCIpICU+JQogIGFkZC5jb25zdHJhaW50KHR5cGUgPSAibG9uZ19vbmx5IikgJT4lCiAgYWRkLm9iamVjdGl2ZSh0eXBlPSJyZXR1cm4iLCBuYW1lPSJtZWFuIikKcG9ydF90YW4KYGBgCgpgYGB7ciBDb25zdHJ1Y3RpbmcgdGhlIFRhbmdlbmN5IFBvcnRmb2xpb30KaW5pdC5wb3J0ZiA8LSBwb3J0Zm9saW8uc3BlYyhhc3NldHM9c3RvY2tfbmFtZXMpCmluaXQucG9ydGYgPC0gYWRkLmNvbnN0cmFpbnQocG9ydGZvbGlvPWluaXQucG9ydGYsIHR5cGU9ImZ1bGxfaW52ZXN0bWVudCIpCmluaXQucG9ydGYgPC0gYWRkLmNvbnN0cmFpbnQocG9ydGZvbGlvPWluaXQucG9ydGYsIHR5cGU9Imxvbmdfb25seSIpCmluaXQucG9ydGYgPC0gYWRkLm9iamVjdGl2ZShwb3J0Zm9saW89aW5pdC5wb3J0ZiwgdHlwZT0icmV0dXJuIiwgbmFtZT0ibWVhbiIpCmluaXQucG9ydGYgPC0gYWRkLm9iamVjdGl2ZShwb3J0Zm9saW89aW5pdC5wb3J0ZiwgdHlwZT0icmlzayIsIG5hbWU9IlN0ZERldiIpCmluaXQucG9ydGYKYGBgCk1heGltaXppbmcgdGhlIFNoYXJwZSBSYXRpbyBjYW4gYmUgZm9ybXVsYXRlZCBhcyBhIHF1YWRyYXRpYyBwcm9ncmFtbWluZyBwcm9ibGVtIGFuZCBzb2x2ZWQgdmVyeSBxdWlja2x5IHVzaW5nIG9wdGltaXplX21ldGhvZD0iUk9JIi4gQWx0aG91Z2ggIlN0ZERldiIgd2FzIHNwZWNpZmllZCBhcyBhbiBvYmplY3RpdmUsIHRoZSBxdWFkcmF0aWMgcHJvZ3JhbW1pbmcgcHJvYmxlbSB1c2VzIHRoZSB2YXJpYW5jZS1jb3ZhcmlhbmNlIG1hdHJpeCBpbiB0aGUgb2JqZWN0aXZlIGZ1bmN0aW9uLgoKVGhlIGRlZmF1bHQgYWN0aW4gaWYgIm1lYW4iIGFuZCAiU3RkRGV2IiBhcmUgc3BlY2lmaWVkIGFzIG9iamVjdGl2ZXMgd2l0aCBvcHRpbWl6ZV9tZXRob2Q9IlJPSSIgaXMgdG8gbWF4aW1pemUgcXVhZHJhdGljIHV0aWxpdHkuIElmIHdlIHdhbnQgdG8gbWF4aW1pemUgU2hhcnBlIFJhdGlvLCB3ZSBuZWVkIHRvIHBhc3MgaW4gbWF4U1I9VFJVRSB0byBvcHRpbWl6ZSB0aGUgcG9ydGZvbGlvLCB3aGljaCBzaG91bGQgbGVhZCB1cyB0byB0aGUgdGFuZ2VuY3kgcG9ydGZvbGlvLgoKYGBge3IgfQptYXhTUi5sby5ST0kgPC0gb3B0aW1pemUucG9ydGZvbGlvKFI9c3RvY2tfcmV0dXJuc194dHMsIHBvcnRmb2xpbz1pbml0LnBvcnRmLCBvcHRpbWl6ZV9tZXRob2RlPSJST0kiLCBtYXhTUj1UUlVFLCB0cmFjZT1UUlVFKQptYXhTUi5sby5ST0kKYGBgCkl0IG5lZWRlZCAxNyBJdGVyYXRpb25zIHRvIGNvbWUgYXMgY2xvc2UgYXMgcG9zc2libGUgdG8gdGhlIHRhbmdlbnkgcG9ydGZvbGlvLgpXZSB3b3VsZCBwdXQgYSBiaWcgc3Rha2UgaW50byBXYWxtYXJ0LCBFeHhvbi1Nb2JpbCwgRGlzbmV5LgpBbHRob3VnaCB0aGUgbWF4aW11bSBTaGFycGUgUmF0aW8gb2JqZWN0aXZlIGNhbiBiZSBzb2x2ZWQgcXVpY2tseSBhbmQgYWNjdXJhdGVseSB3aXRoIG9wdGltaXplX21ldGhvZD0iUk9JIiwgaXQgaXMgYWxzbyBwb3NzaWJsZSBvciBERW9wdGltLiBUaGVzZSBzb2x2ZXJzIGhhdmUgdGhlIGFkZGVkIGZsZXhpYmlsaXR5IG9mIHVzaW5nIGRpZmZlcmVudCBtZXRob2RzIHRvIGNhbGN1bGF0ZSB0aGUgU2hhcnBlIFJhdGlvIChlLmcuIHdlIGNvdWxkIHNwZWNpZnkgYW5udWFsaXplZCBtZWFzdXJlcyBvZiByaXNrIGFuZCByZXR1cm4pLgoKYGBge3IgVXNlIHJhbmRvbSBwb3J0Zm9saW9zIHRvIHJ1biB0aGUgb3B0aW1pemF0aW9ufQptYXhTUi5sby5SUCA8LSBvcHRpbWl6ZS5wb3J0Zm9saW8oUj1zdG9ja19yZXR1cm5zX3h0cywgcG9ydGZvbGlvPWluaXQucG9ydGYsIG9wdGltaXplX21ldGhvZD0icmFuZG9tIiwgc2VhcmNoX3NpemU9MjAwMCwgdHJhY2U9VFJVRSkKbWF4U1IubG8uUlAKY2hhcnQuUmlza1Jld2FyZChtYXhTUi5sby5SUCwgcmlzay5jb2w9IlN0ZERldiIsIHJldHVybi5jb2w9Im1lYW4iKQptYXhTUi5sby5ERSA8LSBvcHRpbWl6ZS5wb3J0Zm9saW8oUj1zdG9ja19yZXR1cm5zX3h0cywgcG9ydGZvbGlvPWluaXQucG9ydGYsIG9wdGltaXplX21ldGhvZD0iREVvcHRpbSIsIHNlYXJjaF9zaXplPTIwMDAsIHRyYWNlPVRSVUUpCm1heFNSLmxvLkRFCmNoYXJ0LlJpc2tSZXdhcmQobWF4U1IubG8uREUsIHJpc2suY29sPSJTdGREZXYiLCByZXR1cm4uY29sPSJtZWFuIikKYGBgCgpUaGUgTWlubWltdW0gVmFyaWFuY2UgUG9ydGZvbGlvIG1pbmltaXppbmcgdGhlIHZhcmlhbmNlIG9mIHRoZSBwb3J0Zm9saW8KCmBgYHtyIE1pbmltdW0gVmFyaWFuY2V9CnBvcnRfbWludmFyIDwtIHBvcnRmb2xpby5zcGVjKGFzc2V0cz1zdG9ja19uYW1lcykgJT4lCiAgYWRkLmNvbnN0cmFpbnQodHlwZT0iZnVsbF9pbnZlc3RtZW50IikgJT4lCiAgYWRkLmNvbnN0cmFpbnQodHlwZSA9ICJsb25nX29ubHkiKSAlPiUKICBhZGQub2JqZWN0aXZlKHR5cGU9InJpc2siLCBuYW1lPSJ2YXIiKQpwb3J0X21pbnZhcgpgYGAKCmBgYHtyfQpvcHRfbWludmFyIDwtIG9wdGltaXplLnBvcnRmb2xpbyhSID0gc3RvY2tfcmV0dXJuc194dHMscG9ydGZvbGlvID0gcG9ydF9taW52YXIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG9wdGltaXplX21ldGhvZCA9ICJST0kiLCB0cmFjZSA9IFRSVUUpCm9wdF9taW52YXIKYGBgCgpgYGB7ciBQbG90dGluZyB0aGUgd2VpZ2h0c30KcGxvdChvcHRfbWludmFyLCBjaGFydC5hc3NldHM9VFJVRSwgbWFpbj0iTWluaW11bSBWYXJpYW5jZSIsIAogICAgICB4bGltPWMoMC4wNSwgMC4zKSwgeWxpbT1jKDAsMC4xKSkKYGBgClNvLCBhcyB3ZSBjYW4gc2VlIHdlIHNlZSB0aGF0IHdlIHdvdWxkIGludmVzdCB0aGUgbWFqb3JpdHkgb2Ygb3VyIGNhcGl0YWwgaW4gV2FsbWFydCBhbmQgRXh4b24gTW9iaWxlLCBkdWUgdG8gdGhlIGxvdyBzdGFuZGFyZCBkZXZpYXRpb24gYW5kIHF1aWV0IGludGVyZXN0aW5nIHdlIHdvdWxkIG5vdCBpbnZlc3QgaW4gTml2aWRpYS4KCmBgYHtyfQpjaGFydC5SaXNrUmV3YXJkKG9wdF9taW52YXIscmV0dXJuLmNvbD0ibWVhbiIsIHJpc2suY29sPSJzZCIsCiAgICAgICAgICAgICAgICAgY2hhcnQuYXNzZXRzPVRSVUUsIAogICAgICAgICAgICAgICAgIHhsaW09YygwLjAxLCAwLjI1KSwKICAgICAgICAgICAgICAgICBtYWluPSJNaW5pbXVtIFZhcmlhbmNlIikKYGBgCgpgYGB7ciBXZWlnaHQgc2V0dGluZyBmb3IgdGhlIFBvcnRmb2xpb3N9Cnd0c190YW4gPC0gYygwLjEzNiwgMC4wMDYsIDAuMDAwLCAwLjAwMCwgMC40NDAsIDAuMDE4LCAwLjE1NCwgMC4wMDIsIDAuMDAwLCAwLjI0NCkKd3RzX21pbnZhciA8LSBjKDAuMDI0MSwgMC4wMDAwLCAwLjA2MTUsIDAuMDAwMCwgMC40NTUxLCAwLjAwMDAsIDAuMDAwMCwgMC4wMDAwLCAwLjEwOTQsIDAuMzQ5OSkjIFdlaWdodHMgZnJvbSB0aGUgTWluaW11bSBWYXJpYW5jZSBQb3J0Zm9saW8KYGBgCgpQb3J0Zm9saW8gUmV0dXJucwpgYGB7cn0Kc3RvY2tfcmV0dXJucwoKdGFuX3BvcnQgPC0gc3RvY2tfcmV0dXJucyAlPiUKICAgIHRxX3BvcnRmb2xpbyhhc3NldHNfY29sICA9IHN5bWJvbCwgCiAgICAgICAgICAgICAgICAgcmV0dXJuc19jb2wgPSBtb250aGx5LnJldHVybnMsIAogICAgICAgICAgICAgICAgIHdlaWdodHMgICAgID0gd3RzX3RhbiwgCiAgICAgICAgICAgICAgICAgY29sX3JlbmFtZSAgPSAiUmV0dXJuIikKdGFuX3BvcnQKbWludmFyX3BvcnQgPC0gc3RvY2tfcmV0dXJucyAlPiUKICAgIHRxX3BvcnRmb2xpbyhhc3NldHNfY29sICA9IHN5bWJvbCwgCiAgICAgICAgICAgICAgICAgcmV0dXJuc19jb2wgPSBtb250aGx5LnJldHVybnMsIAogICAgICAgICAgICAgICAgIHdlaWdodHMgICAgID0gd3RzX21pbnZhciwgCiAgICAgICAgICAgICAgICAgY29sX3JlbmFtZSAgPSAiUmV0dXJuIikKbWludmFyX3BvcnQKYGBgCkZvciB0aGlzIHRhc2sgd2UgdGFrZSB0aGUgU1A1MDAgYXMgdGhlIGJlbmNobWFyay4KYGBge3IgU1A1MDB9CmJlbmNoX3JldHVybnMgPC0gIl5HU1BDIiAlPiUKICAgIHRxX2dldChnZXQgID0gInN0b2NrLnByaWNlcyIsCiAgICAgICAgICAgZnJvbSA9ICIyMDAwLTAxLTAxIiwKICAgICAgICAgICB0byAgID0gIjIwMjAtMTEtMTciKSAlPiUKICAgIHRxX3RyYW5zbXV0ZShzZWxlY3QgICAgID0gYWRqdXN0ZWQsIAogICAgICAgICAgICAgICAgIG11dGF0ZV9mdW4gPSBwZXJpb2RSZXR1cm4sIAogICAgICAgICAgICAgICAgIHBlcmlvZCAgICAgPSAibW9udGhseSIsIAogICAgICAgICAgICAgICAgIGNvbF9yZW5hbWUgPSAiQmVuY2htYXJrIikKYmVuY2hfcmV0dXJucwpgYGAKYGBge3IgTWVyZ2luZyB0aGUgZGF0YSB0b2dldGhlcn0Kb3ZfdGFuX3BvcnQgPC0gbGVmdF9qb2luKHRhbl9wb3J0LGJlbmNoX3JldHVybnMsYnkgPSAiZGF0ZSIpCm92X21pbnZhcl9wb3J0IDwtIGxlZnRfam9pbihtaW52YXJfcG9ydCxiZW5jaF9yZXR1cm5zLGJ5ID0gImRhdGUiKQoKb3ZfdGFuX3BvcnQKb3ZfbWludmFyX3BvcnQKYGBgCmBgYHtyIE92ZXJ2aWV3IGZvciB0aGUgVGFuZ2VuY3kgUG9ydGZvbGlvfQpvdl90YW5fcG9ydCAlPiUKICAgIHRxX3BlcmZvcm1hbmNlKFJhID0gUmV0dXJuLCBSYiA9IEJlbmNobWFyaywgCiAgICBwZXJmb3JtYW5jZV9mdW4gPSB0YWJsZS5DQVBNKQpgYGAKCmBgYHtyIE92ZXJ2aWV3IGZvciB0aGUgTWluaW11bSBWYXJpYW5jZX0Kb3ZfbWludmFyX3BvcnQgJT4lCiAgICB0cV9wZXJmb3JtYW5jZShSYSA9IFJldHVybiwgUmIgPSBCZW5jaG1hcmssIAogICAgcGVyZm9ybWFuY2VfZnVuID0gdGFibGUuQ0FQTSkKYGBgCmBgYHtyIE1lYW4gY2FsY30KdGFuX3IgPC0gZ2VvbWV0cmljLm1lYW4ob3ZfdGFuX3BvcnQkUmV0dXJuKQptaW52YXJfciA8LSBnZW9tZXRyaWMubWVhbihvdl9taW52YXJfcG9ydCRSZXR1cm4pCmJlbmNoX3IgPC0gZ2VvbWV0cmljLm1lYW4ob3ZfbWludmFyX3BvcnQkQmVuY2htYXJrKQpgYGAKCmBgYHtyIEZ1dHVyZSBWYWx1ZX0KRlZfdGFuIDwtIEZWKHJhdGUgPSB0YW5fciwgbnBlciA9IDE6MjM5LHB2ID0gMTAwLHBtdCA9IC0xMDAsdHlwZSA9IDEpCkZWX21pbnZhciA8LSBGVihyYXRlID0gbWludmFyX3IsIG5wZXIgPSAxOjIzOSwgcHYgPSAxMDAsIHBtdCA9IC0xMDAsIHR5cGU9MSkKRlZfYmVuY2ggPC0gRlYocmF0ZT1iZW5jaF9yLCBucGVyID0gMToyMzksIHB2ID0gMTAwLCBwbXQgPSAtMTAwLCB0eXBlID0gMSkKaWQgPC0gYygxOjIzOSkKYXMuZGF0YS5mcmFtZShGVl90YW4pCmFzLmRhdGEuZnJhbWUoaWQpCmFzLmRhdGEuZnJhbWUoRlZfbWludmFyKQphcy5kYXRhLmZyYW1lKEZWX2JlbmNoKQpvdl9saXN0IDwtIGNiaW5kKGlkLCBGVl90YW4sRlZfbWludmFyLEZWX2JlbmNoKQpvdl9saXN0IDwtIGFzLmRhdGEuZnJhbWUob3ZfbGlzdCkKaW52ZXN0IDwtIG92X2xpc3RbMjM5LF0KaW52ZXN0CmBgYAoKCmBgYHtyIFBsb3RpbmcgdGhlIHdlYWx0aCBkZXZlbG9wbWVudCBvdmVyIHRpbWV9CmdncGxvdChvdl9saXN0LCBhZXMoeD1pZCkpICsgCiAgZ2VvbV9saW5lKGFlcyh5ID0gRlZfdGFuKSwgY29sb3IgPSAiZGFya3JlZCIpICsgCiAgZ2VvbV9saW5lKGFlcyh5ID0gRlZfbWludmFyKSwgY29sb3I9InN0ZWVsYmx1ZSIsIGxpbmV0eXBlPSJ0d29kYXNoIikgKwogIGdlb21fbGluZShhZXMoeT1GVl9iZW5jaCksIGNvbG9yPSJwaW5rIikgKwogIGdndGl0bGUoIldlYWx0aCBEZXZlbG9wbWVudCIpCmBgYApUaGUgdGFuZ2VuY3kgcG9ydGZvbGlvIHBlcmZvcm1lZCB2ZXJ5IGdvb2QgcmVsYXRlZCB0byB0aGUgb3RoZXJzLgoKYGBge3IgSWYgd2Ugd291bGQgd2FudCB0byBnZXQgdGhlIHNhbWUgYW1vdW50IG9mIG1vbmV5IHdpdGggYSBvbmUgdGltZSBpbnZlc3RtZW50fQpQVl90YW4gPC0gUFYocmF0ZSA9IHRhbl9yLG5wZXIgPSAxOjIzOSxmdiA9LWludmVzdCRGVl90YW4gLHBtdCA9IDAsdHlwZSA9IDEpClBWX21pbnZhciA8LSBQVihyYXRlID1taW52YXJfciwgbnBlcj0xOjIzOSxmdj0taW52ZXN0JEZWX21pbnZhcixwbXQ9MCx0eXBlPTEpClBWX2JlbmNoIDwtIFBWKHJhdGU9YmVuY2hfciwgbnBlcj0xOjIzOSwgZnY9LWludmVzdCRGVl9iZW5jaCxwbXQ9MCwgdHlwZT0xKQppZCA8LSBjKDE6MjM5KQphcy5kYXRhLmZyYW1lKFBWX3RhbikKYXMuZGF0YS5mcmFtZShpZCkKYXMuZGF0YS5mcmFtZShQVl9taW52YXIpCmFzLmRhdGEuZnJhbWUoUFZfYmVuY2gpCm92X2xpc3QgPC0gY2JpbmQoaWQsIFBWX3RhbixQVl9taW52YXIsUFZfYmVuY2gpCm92X2xpc3QgPC0gYXMuZGF0YS5mcmFtZShvdl9saXN0KQppbnZlc3QgPC0gb3ZfbGlzdFsyMzksXQppbnZlc3QKYGBgCkFzIHdlIHNlZSBpZiB3ZSB3b3VsZCBsaWtlIHRvIG1ha2UgYW4gb25lIHRpbWUgaW52ZXN0bWVudCwgYnV0IGFsc28gdGhlIGV4YWN0IHNhbWUgYW1vdW50IG9mIG1vbmV5IGFzIGlmIHdlIHdvdWxkIGludmVzdCAxMDAgZG9sbGFyIHBlciBtb250aC4gRm9yIHRoZSBUYW5nZW5jeSBQb3J0Zm9saW8gd2Ugd291bGQgbmVlZCB0byBpbnZlc3QgX18zNzM0LjY1X18kIGZvciB0aGUgTWluaW1pdW0gVmFyaWFuY2UgUG9ydGZvbGlvIHdlIHdvdWxkIG5lZWQgdG8gaW52ZXN0IF9fNDY5NS43MF9fJCBhbmQgZm9yIHRoZSBwYXNzaXZlIHN0cmF0ZWd5IFMmUDUwMCB3ZSB3b3VsZCBuZWVkIF9fNTA4Mi4wNV9fLiBTbywgYXMgd2UgY2FuIHNlZSB0aGF0IHRoZSBpbnRyZXN0IG9mIGludHJlc3QgZWZmZWN0IHRha2VzIGhlcmUgcGFydCBhbmQgZHJhbWF0aWNhbGx5IGluY3JlYXNlcyB0aGUgZnV0dXJlIHZhbHVlIG9mIG91ciBpbnZlc3RtZW50LgoKYGBge3J9CmdncGxvdChvdl9saXN0LCBhZXMoeD1pZCkpICsgCiAgZ2VvbV9saW5lKGFlcyh5ID0gUFZfdGFuKSwgY29sb3IgPSAiZGFya3JlZCIpICsgCiAgZ2VvbV9saW5lKGFlcyh5ID0gUFZfbWludmFyKSwgY29sb3I9InN0ZWVsYmx1ZSIsIGxpbmV0eXBlPSJ0d29kYXNoIikgKwogIGdlb21fbGluZShhZXMoeT1QVl9iZW5jaCksIGNvbG9yPSJwaW5rIikgKwogIGdndGl0bGUoIk9uZSB0aW1lIGludmVzdG1lbnQiKQpgYGAKCgojIyBFeGVyY2lzZSA0OiBBY3RpdmUgUG9ydGZvbGlvIE1hbmFnZW1lbnQKCldvcmsgdGhyb3VnaCB0cm91Z2ggdGhlIGRlbW8gYGRlbW8ocmVsYXRpdmVfcmFua2luZylgLiBVc2Ugd2hhdCB5b3UgbGVhciBoZXJlLCBmb3JtIGFuIGFwcHJvcHJpYXRlIG9waW5pb24gb24gdGhlIHJhbmtpbmcgb2YgeW91ciBhc3NldHMgYW5kIG9wdGltaXplIGEgTWluaW11bSBWYXJpYW5jZSBhbmQgTWF4aW11bSBTaGFycGUgcmF0aW8gUG9ydGZvbGlvLiBXaGljaCBvbmUgcGVyZm9ybXMgYmV0dGVyPwoKCmRlbW8ocmVsYXRpdmVfcmFua2luZykKCmRhdGEoZWRoZWMpCmBgYHtyfQpSIDwtIGVkaGVjWywxOjRdCmBgYAoKYGBge3J9CmZ1bmRzIDwtIGNvbG5hbWVzKFIpCmBgYAogIycgQ29uc3RydWN0IGluaXRpYWwgcG9ydGZvbGlvIHdpdGggYmFzaWMgY29uc3RyYWludHMuCmBgYHtyfQppbml0LnBvcnRmIDwtIHBvcnRmb2xpby5zcGVjKGFzc2V0cz1mdW5kcykKYGBgCgpgYGB7cn0KaW5pdC5wb3J0ZiA8LSBhZGQuY29uc3RyYWludChwb3J0Zm9saW89aW5pdC5wb3J0ZiwgdHlwZT0id2VpZ2h0X3N1bSIsIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICBtaW5fc3VtPTAuOTksIG1heF9zdW09MS4wMSkKYGBgCgpgYGB7ciBtZXNzYWdlPUZBTFNFLCB3YXJuaW5nPUZBTFNFLCBwYWdlZC5wcmludD1GQUxTRX0KaW5pdC5wb3J0ZiA8LSBhZGQuY29uc3RyYWludChwb3J0Zm9saW89aW5pdC5wb3J0ZiwgdHlwZT0iYm94IixtaW49MC4wNSwgbWF4PTAuNSkKYGBgCgpgYGB7cn0KaW5pdC5wb3J0ZiA8LSBhZGQub2JqZWN0aXZlKHBvcnRmb2xpbz1pbml0LnBvcnRmLCB0eXBlPSJyaXNrIiwgbmFtZT0iU3RkRGV2IikKYGBgCgpgYGB7cn0KCmluaXQucG9ydGYgPC0gYWRkLm9iamVjdGl2ZShwb3J0Zm9saW89aW5pdC5wb3J0ZiwgdHlwZT0icmV0dXJuIiwgbmFtZT0ibWVhbiIpCgppbml0LnBvcnRmCmBgYAo+ICMnIEhlcmUgd2UgZXhwcmVzcyB2aWV3cyBvbiB0aGUgcmVsYXRpdmUgcmFuayBvZiB0aGUgYXNzZXQgcmV0dXJucy4KCmBgYHtyfQphc3NldC5yYW5rIDwtIGMoMiwgMywgMSwgNCkKCmBgYAoKCj4gIycgVXNlIE1ldWNjaSBGdWxseSBGbGV4aWJsZSBWaWV3cyBmcmFtZXdvcmsgdG8gZXhwcmVzcyB2aWV3cyBvbiB0aGUgcmVsYXRpdmUKPiAjJyBvcmRlciBvZiBhc3NldCByZXR1cm5zLgo+ICMnIERlZmluZSBwcmlvciBwcm9iYWJpbGl0aWVzLgoKYGBge3J9CnAgPC0gcmVwKDEgLyBucm93KFIpLCBucm93KFIpKQpgYGAKCj4gIycgRXhwcmVzcyB2aWV3IG9uIHRoZSByZWxhdGl2ZSBvcmRlcmluZyBvZiBhc3NldCByZXR1cm5zCgpgYGB7cn0KbS5tb21lbnRzIDwtIG1ldWNjaS5yYW5raW5nKFIsIHAsIGFzc2V0LnJhbmspCgpgYGAKCgogIycgRXhwcmVzcyB2aWV3cyB1c2luZyB0aGUgbWV0aG9kIGRlc2NyaWJlZCBpbiBBbG1ncmVuIGFuZCBDaHJpc3MsIAo+ICMnICJQb3J0Zm9saW9zIGZyb20gU29ydHMiLgoKYGBge3J9CiBhYy5tb21lbnRzIDwtIGxpc3QoKQoKYWMubW9tZW50cwpgYGAKCmBgYHtyfQphYy5tb21lbnRzJG11IDwtIGFjLnJhbmtpbmcoUiwgYXNzZXQucmFuaykKYGBgCgo+ICMgU2FtcGxlIGVzdGltYXRlIGZvciBzZWNvbmQgbW9tZW50CgpgYGB7cn0KYWMubW9tZW50cyRzaWdtYSA8LSBjb3YoUikKYGBgCgo+ICMnIEdlbmVyYXRlIHJhbmRvbSBwb3J0Zm9saW9zIGZvciB1c2UgaW4gdGhlIG9wdGltaXphdGlvbi4KCmBgYHtyfQpycCA8LSByYW5kb21fcG9ydGZvbGlvcyhpbml0LnBvcnRmLCA1MDAwKQoKcnAKYGBgCj4gIycgUnVuIHRoZSBvcHRpbWl6YXRpb24gdXNpbmcgZmlyc3QgYW5kIHNlY29uZCBtb21lbnRzIGVzdGltYXRlZCBmcm9tIAo+ICMnIE1ldWNjaSdzIEZ1bGx5IEZsZXhpYmxlIFZpZXdzIGZyYW1ld29yayB1c2luZyB0aGUgbW9tZW50cyB3ZSBjYWxjdWxhdGVkCgoKYGBge3J9Cm9wdC5tZXVjY2kgPC0gb3B0aW1pemUucG9ydGZvbGlvKFIsIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBpbml0LnBvcnRmLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBvcHRpbWl6ZV9tZXRob2Q9InJhbmRvbSIsIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBycD1ycCwgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHRyYWNlPVRSVUUsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG1vbWVudGFyZ3M9bS5tb21lbnRzKQoKb3B0Lm1ldWNjaQoKCmBgYAoKPiAjJyBSdW4gdGhlIG9wdGltaXphdGlvbiB1c2luZyBmaXJzdCBtb21lbnQgZXN0aW1hdGVkIGJhc2VkIG9uIEFsbWdyZW4gYW5kIENocmlzcywgCj4gIycgIlBvcnRmb2xpb3MgZnJvbSBTb3J0cyIuIFRoZSBzZWNvbmQgbW9tZW50IHVzZXMgdGhlIHNhbXBsZSBlc3RpbWF0ZS4KCmBgYHtyfQpvcHQuYWMgPC0gb3B0aW1pemUucG9ydGZvbGlvKFIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgaW5pdC5wb3J0ZiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICBvcHRpbWl6ZV9tZXRob2Q9InJhbmRvbSIsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcnA9cnAsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgdHJhY2U9VFJVRSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICBtb21lbnRhcmdzPWFjLm1vbWVudHMpCgpvcHQuYWMKCmBgYAo+ICMnIEZvciBjb21wYXJpc29uLCBydW4gdGhlIG9wdGltaXphdGlvbiB1c2luZyBzYW1wbGUgZXN0aW1hdGVzIGZvciBmaXJzdCBhbmQgCj4gIycgc2Vjb25kIG1vbWVudHMuCgpgYGB7cn0Kb3B0LnNhbXBsZSA8LSBvcHRpbWl6ZS5wb3J0Zm9saW8oUiwgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGluaXQucG9ydGYsIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBvcHRpbWl6ZV9tZXRob2Q9InJhbmRvbSIsIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBycD1ycCwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgdHJhY2U9VFJVRSkKb3B0LnNhbXBsZQoKYGBgCgoKPiAjJyBIZXJlIHdlIHBsb3QgdGhlIG9wdGltYWwgd2VpZ2h0cyBvZiBlYWNoIG9wdGltaXphdGlvbi4KCmBgYHtyfQpjaGFydC5XZWlnaHRzKGNvbWJpbmUub3B0aW1pemF0aW9ucyhsaXN0KG1ldWNjaT1vcHQubWV1Y2NpLCAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGFjPW9wdC5hYywKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHNhbXBsZT1vcHQuc2FtcGxlKSksIAogICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgCnlsaW09YygwLDEpLCBwbG90LnR5cGU9ImJhcnBsb3QiKQoKYGBgCj4gIycgSGVyZSB3ZSBkZWZpbmUgYSBjdXN0b20gbW9tZW50IGZ1bmN0aW9uIHRvIGVzdGltYXRlIG1vbWVudHMgYmFzZWQgb24gCj4gIycgcmVsYXRpdmUgcmFua2luZyB2aWV3cy4KPiAjJyBBc3NldCBhcmUgcmFua2VkIGFjY29yZGluZyB0byBhIG1vbWVudHVtIG9yIHJldmVyc2FsIHZpZXcgYmFzZWQgb24gdGhlIAo+ICMnIHByZXZpb3VzIG4gcGVyaW9kcy4KCmBgYHtyfQptb21lbnQucmFua2luZyA8LSBmdW5jdGlvbihSLCBuPTEsIG1vbWVudHVtPVRSVUUsIG1ldGhvZD1jKCJtZXVjY2kiLCAiYWMiKSl7CiAgCiMgTW9tZW50IGZ1bmN0aW9uIHRvIGVzdGltYXRlIG1vbWVudHMgYmFzZWQgb24gcmVsYXRpdmUgcmFua2luZyBvZiAKIyBleHBlY3RlZCByZXR1cm5zLgogIAptZXRob2QgPC0gbWF0Y2guYXJnKG1ldGhvZCkKICAgCiAgICMgVXNlIHRoZSBtb3N0IHJlY2VudCBuIHBlcmlvZHMgb2YgcmV0dXJucwogICB0bXBSIDwtIGFwcGx5KHRhaWwoUiwgbiksIDIsIGZ1bmN0aW9uKHgpIHByb2QoMSArIHgpIC0gMSkKICAgCiAgIGlmKG1vbWVudHVtKXsKICAgICAjIEFzc3VtZSB0aGF0IHRoZSBhc3NldHMgd2l0aCB0aGUgaGlnaGVzdCByZXR1cm4gd2lsbCBjb250aW51ZSB0byBvdXRwZXJmb3JtCiAgICAgYXNzZXQucmFuayA8LSBvcmRlcih0bXBSKQogICB9IGVsc2UgewojIEFzc3VtZSB0aGF0IHRoZSBhc3NldHMgd2l0aCB0aGUgaGlnaGVzdCByZXR1cm4gd2lsbCByZXZlcnNlCmFzc2V0LnJhbmsgPC0gcmV2KG9yZGVyKHRtcFIpKQp9CnN3aXRjaChtZXRob2QsCm1ldWNjaSA9IHsKICAgICAgICAgICAgIyBNZXVjY2kgRnVsbHkgRmxleGlibGUgVmlld3MgZnJhbWV3b3JrCiAgICAgICAgICAgICMgUHJpb3IgcHJvYmFiaWxpdGllcwogICAgICAgICAgIHAgPC0gcmVwKDEgLyBucm93KFIpLCBucm93KFIpKQogICAgICAgICAgICAKICAgICAgICAgICAgIyBSZWxhdGl2ZSBvcmRlcmluZyB2aWV3CiAgICAgICAgICAgbW9tZW50cyA8LSBtZXVjY2kucmFua2luZyhSLCBwLCBhc3NldC5yYW5rKQogICAgICAgICAgfSwKICAgICAgICAgIGFjID0gewogICAgICAgICAgICAjIEFsbWdyZW4gYW5kIENocmlzcyBQb3J0Zm9saW9zIGZyb20gU29ydHMKICAgICAgICAgICAgbW9tZW50cyA8LSBsaXN0KCkKICAgICAgICAgICAgbW9tZW50cyRtdSA8LSBhYy5yYW5raW5nKFIsIGFzc2V0LnJhbmspCiAgICAgICAgICAgICMgU2FtcGxlIGVzdGltYXRlIGZvciBzZWNvbmQgbW9tZW50CiAgICAgICAgICAgIG1vbWVudHMkc2lnbWEgPC0gY292KFIpCiAgICAgICAgIH0KICAgKQogICByZXR1cm4obW9tZW50cykKIH0KCgpvcHQuYnQubWV1Y2NpCmBgYAoKPiAjJyBIZXJlIHdlIHJ1biBvdXQgb2Ygc2FtcGxlIGJhY2t0ZXN0cyB0byB0ZXN0IHRoZSBvdXQgb2Ygc2FtcGxlIHBlcmZvcm1hbmNlIHVzaW5nIHRoZSBkaWZmZXJlbnQgZnJhbWV3b3JrcyB0byBleHByZXNzIG91ciB2aWV3cyBvbiByZWxhdGl2ZSBhc3NldCByZXR1cm4gcmFua2luZy4KCmBgYHtyfQpwdC5idC5tZXVjY2kgPC0gb3B0aW1pemUucG9ydGZvbGlvLnJlYmFsYW5jaW5nKFIsIGluaXQucG9ydGYsIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG9wdGltaXplX21ldGhvZD0icmFuZG9tIiwgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHJlYmFsYW5jZV9vbj0icXVhcnRlcnMiLCAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB0cmFpbmluZ19wZXJpb2Q9MTAwLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHJwPXJwLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG1vbWVudEZVTj0ibW9tZW50LnJhbmtpbmciLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG49MiwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBtb21lbnR1bT1UUlVFLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG1ldGhvZD0ibWV1Y2NpIikKcHQuYnQubWV1Y2NpCgpgYGAKYGBge3J9Cm9wdC5idC5hYyA8LSBvcHRpbWl6ZS5wb3J0Zm9saW8ucmViYWxhbmNpbmcoUiwgaW5pdC5wb3J0ZiwgCm9wdGltaXplX21ldGhvZD0icmFuZG9tIiwgCnJlYmFsYW5jZV9vbj0icXVhcnRlcnMiLCAKcnA9cnAsCm1vbWVudEZVTj0ibW9tZW50LnJhbmtpbmciLApuPTIsCm1vbWVudHVtPVRSVUUsCm1ldGhvZD0iYWMiKQpgYGAKCmBgYHtyfQoKb3B0LmJ0LnNhbXBsZSA8LSBvcHRpbWl6ZS5wb3J0Zm9saW8ucmViYWxhbmNpbmcoUiwgaW5pdC5wb3J0ZiwgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBvcHRpbWl6ZV9tZXRob2Q9InJhbmRvbSIsIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcmViYWxhbmNlX29uPSJxdWFydGVycyIsIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgdHJhaW5pbmdfcGVyaW9kPTEwMCwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHJwPXJwKQpgYGAKCj4gIycgQ29tcHV0ZSByZXR1cm5zIGFuZCBjaGFydCBwZXJmb3JtYW5jZSBzdW1tYXJ5LgoKYGBge3J9CnJldC5tZXVjY2kgPC0gUmV0dXJuLnBvcnRmb2xpbyhSLCBleHRyYWN0V2VpZ2h0cyhvcHQuYnQubWV1Y2NpKSkKYGBgCgpgYGB7cn0KcmV0LmFjIDwtIFJldHVybi5wb3J0Zm9saW8oUiwgZXh0cmFjdFdlaWdodHMob3B0LmJ0LmFjKSkKYGBgCgpgYGB7cn0KcmV0LnNhbXBsZSA8LSBSZXR1cm4ucG9ydGZvbGlvKFIsIGV4dHJhY3RXZWlnaHRzKG9wdC5idC5zYW1wbGUpKQpgYGAKCmBgYHtyfQpyZXQgPC0gY2JpbmQocmV0Lm1ldWNjaSwgcmV0LmFjLCByZXQuc2FtcGxlKQpgYGAKCmBgYHtyfQpjb2xuYW1lcyhyZXQpIDwtIGMoIm1ldWNjaS5yYW5rIiwgImFjLnJhbmsiLCAic2FtcGxlIikKYGBgCgpgYGB7cn0KY2hhcnRzLlBlcmZvcm1hbmNlU3VtbWFyeShyZXQsIG1haW49IlJhbmtpbmcgVmlld3MgUGVyZm9ybWFuY2UiKQpgYGAKCgoKCgoKCgoK</div>
 
 
 
