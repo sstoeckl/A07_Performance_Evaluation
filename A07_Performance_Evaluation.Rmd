@@ -42,6 +42,11 @@ sp100_monthly_MV <- read_excel("sp100 monthly MV.xlsx")
 head(sp100_monthly_MV, n=10)
 ```
 
+```{r}
+sp100_monthly_MV <- 
+```
+
+
 b) Further import the Fama-French-Factors from Kenneth Frenchs homepage (monthly, e.g. using `FFdownload`). From both datasets we select data for the last (available) 60 months, calculate returns (simple percentage) for the US-Stocks and eliminate those stocks that have NAs for this period.
 
 ```{r}
@@ -182,7 +187,7 @@ mean value
 ```  
 
 ```{r}
- mean_sp100_MV
+mean_sp100_MV
 ```
 
 
