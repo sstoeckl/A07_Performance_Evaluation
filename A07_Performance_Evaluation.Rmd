@@ -26,6 +26,168 @@ c) Now subtract the risk-free rate from all the stocks. Then estimate each stock
 d) In a next step (following both documents), we sort the stocks according to their beta and build ten value-weighted portfolios (with more or less the same number of stocks). Repeat a) for the ten portfolios. What do you observe?
 e) In the third step you follow page 6-8 of the second document and estimate the second-pass regression with the market and then market & idiosyncratic risk. What do you observe? Present all your results in a similar fashion as in the document.
 
+In this exercise we want to estimate the CAPM. Please read carefully through the two documents provided (right hand side: files). Then we start to collect the necessary data:
+  
+a) From Datastream get the last 10 years of data from the 100 stocks of the S&P100 using the list `LS&P100I` (S&P 100): total return index (RI) and market cap (MV)
+
+```{r}
+library(readxl)
+sp100_daily_RI <- read_excel("sp100 daily RI_2.xlsx")
+head(sp100_daily_RI, n=10)
+```
+
+```{r}
+library(readxl)
+sp100_monthly_MV <- read_excel("sp100 monthly MV.xlsx")
+head(sp100_monthly_MV, n=10)
+```
+
+b) Further import the Fama-French-Factors from Kenneth Frenchs homepage (monthly, e.g. using `FFdownload`). From both datasets we select data for the last (available) 60 months, calculate returns (simple percentage) for the US-Stocks and eliminate those stocks that have NAs for this period.
+
+```{r}
+ tempf <- tempfile(fileext = ".RData"); tempd <- tempdir(); temptxt <- tempfile(fileext = ".txt")
+ inputlist <- c("F-F_Research_Data_Factors","F-F_Market_Beta")
+ FFdownload(exclude_daily=TRUE,tempdir=tempd,download=TRUE,download_only=FALSE,inputlist=inputlist)
+ tempf2 <- tempfile(fileext = ".RData"); tempd2 <- tempdir() 
+ FFdownload(output_file = tempf2,tempdir = tempd2,exclude_daily = TRUE, download = TRUE, download_only=FALSE, listsave=temptxt)
+ load(tempf2)
+ ff<-FFdownload$x_Developed_ex_US_3_Factors$monthly$Temp2
+ sff<-ff["2015/2019"]
+ sff<-timetk::tk_tbl(ff)
+ colnames(sff)[1]<-"date"
+```
+
+```{r}
+sff
+```
+
+```{r}
+require(tidyquant)
+require(timetk)
+
+anyNA(sp100_daily_RI)
+sp100_daily_RI_prices <- gather(sp100_daily_RI, key = symbol, value= prices, "AMAZON.COM":"CHARTER COMMS.CL.A")
+anyNA(sp100_daily_RI_prices)
+```
+
+```{r}
+sp100_returns_RI_60_long <- sp100_daily_RI_prices %>% mutate(prices = as.numeric(prices)) %>% group_by(symbol) %>%
+  tq_transmute(select = prices,
+               mutate_fun = periodReturn, 
+               period="monthly", 
+               type="arithmetic",
+               col_rename = "Stock.returns") %>% ungroup() %>% mutate(date = as.yearmon(date))
+ anyNA(sp100_returns_RI_60_long)
+
+ sp100_returns_RI_60_long <- sp100_returns_RI_60_long[c(2,1,3)] %>% group_by(symbol)
+
+ fama_french <- sff %>%
+    select(date, Mkt.RF, RF) %>% mutate(date = as.yearmon(date))
+```
+
+
+c) Now subtract the risk-free rate from all the stocks. Then estimate each stocks beta with the market: Regress all stock excess returns on the market excess return and save all betas (optimally use `mutate` and `map` in combination with `lm`). Estimate the mean-return for each stock and plot the return/beta-combinations. Create the security market line and include it in the plot! What do you find?
+
+```{r}
+ library(tidyquant)
+ library(tidyverse)
+ library(PerformanceAnalytics)
+
+
+ joined_data <- left_join(sp100_returns_RI_60_long, fama_french, by= c("date"))
+
+ joined_data <- mutate(joined_data, 
+       monthly_ret_rf = Stock.returns - RF)
+
+ require(xts)
+ regr_fun <- function(data_xts) {
+    lm(monthly_ret_rf ~ Mkt.RF, data = as_data_frame(data_xts)) %>%
+        coef()
+ }
+
+ beta_alpha <- joined_data %>% 
+    tq_mutate(mutate_fun = rollapply,
+              width      = 60,
+              FUN        = regr_fun,
+              by.column  = FALSE,
+              col_rename = c("alpha", "beta"))
+
+ beta_alpha
+```
+
+```{r}
+ beta_alpha_filter <- filter(beta_alpha, !is.na(alpha))
+ symbol_beta_alpha <- beta_alpha_filter %>%
+    select(symbol, alpha, beta)
+ symbol_beta_alpha 
+```
+
+```{r}
+ alpha <- beta_alpha %>%
+    select(symbol, alpha)
+```
+
+```{r}
+ beta <- beta_alpha_filter %>%
+    select(symbol, beta)
+ beta
+```
+
+```{r}
+ library(dplyr)
+ means_sp100_RI_60 <- joined_data %>%
+    group_by(symbol) %>%
+    summarize(mu = mean(monthly_ret_rf, na.rm=TRUE))
+ means_sp100_RI_60
+```
+
+```{r}
+ mu.hat <- mutate(beta_alpha, 
+       mu_capm = beta * mean(Mkt.RF))
+
+ mu.hat <- filter(mu.hat, !is.na(alpha))
+ mu.hat <- mu.hat  %>%
+    select(symbol, alpha, beta, mu_capm)
+
+ mu.hat <- left_join(mu.hat, means_sp100_RI_60, by = "symbol")
+
+ sml.fit <- lm(mu_capm~beta, mu.hat)
+
+ install.packages("plotly")
+ library(plotly)
+
+ p <- plot_ly(mu.hat, x = ~beta, y = ~mu_capm, type = 'scatter', mode = 'line', text = ~paste('symbol:', symbol)) %>%
+    add_markers(x = ~beta, y = ~mu)
+
+ p
+```
+
+
+d) In a next step (following both documents), we sort the stocks according to their beta and build ten value-weighted portfolios (with more or less the same number of stocks). Repeat a) for the ten portfolios. What do you observe?
+
+```{r}
+ sp100_monthly_MV <- read_excel("sp100 monthly MV.xlsx")
+ head(sp100_monthly_MV, n=10)
+
+ anyNA(sp100_monthly_MV)
+ sp100_monthly_MV <- gather(sp100_monthly_MV, key = symbol, value= value, "AMAZON.COM":"CHARTER COMMS.CL.A")
+ anyNA(sp100_daily_RI_prices)
+```
+
+mean value
+```{r}
+ mean_sp100_MV <- sp100_monthly_MV %>% 
+    group_by(symbol) %>%
+    summarize(mean_value = mean(value, na.rm=TRUE))
+```  
+
+```{r}
+ mean_sp100_MV
+```
+
+
+
+
 ## Exercise 2: Performance Evaluation I
 
 Read Chapter 24 of our book. In this exercise use a Minimum Variance and a Tangecy (Maxium Sharpe Ratio) portfolio calculate from your stocks, as well as the S&P500 as a benchmark (Period 2000-01-01 - 2020-01-11). For all three Investment Opportunities imagine you invest 100USD per month into the portfolio. What is the overall return this investment provides you? How much should you have invested at the beginning (one-time investment) to get the exact same overall wealth at the end of 2020? Can you plot both wealth developments over time?
@@ -258,7 +420,7 @@ ov_list <- as.data.frame(ov_list)
 invest <- ov_list[239,]
 invest
 ```
-As we see if we would like to make an one time investment, but also the exact same amount of money as if we would invest 100 dollar per month. For the Tangency Portfolio we would need to invest __3109.721__$ for the Minimium Variance Portfolio we would need to invest __4695.70__$ and for the passive strategy S&P500 we would need __5082.05__. So, as we can see that the intrest of intrest effect takes here part and dramatically increases the future value of our investment.
+As we see if we would like to make an one time investment, but also the exact same amount of money as if we would invest 100 dollar per month. For the Tangency Portfolio we would need to invest __2896.20__$ for the Minimium Variance Portfolio we would need to invest __4695.7__$ and for the passive strategy S&P500 we would need __5082.05__. So, as we can see that the intrest of intrest effect takes here part and dramatically increases the future value of our investment.
 
 ```{r}
 ggplot(ov_list, aes(x=id)) + 
