@@ -16,7 +16,7 @@ library("psych")
 
 For all exercises: Please use the Assignment-Forum to post your questions, I will try my best to help you along!
 
-## Exercise 1: Analysing the CAPM  -- sollte Mitschel machen, da ihm noch eine Note fehlt. Jedoch leider nichts erhalten.
+## Exercise 1: Analysing the CAPM  
 
 In this exercise we want to estimate the CAPM. Please read carefully through the two documents provided (right hand side: files). Then we start to collect the necessary data:
   
