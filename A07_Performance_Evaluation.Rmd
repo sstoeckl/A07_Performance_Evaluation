@@ -149,7 +149,7 @@ c) Now subtract the risk-free rate from all the stocks. Then estimate each stock
  mu.hat <- mu.hat  %>%
     select(symbol, alpha, beta, mu_capm)
 
- mu.hat <- left_join(mu.hat, means_sp100_RI_60, by = "symbol")
+ mu.hat <- merge(mu.hat, means_sp100_RI_60)
 
  sml.fit <- lm(mu_capm~beta, mu.hat)
 
