@@ -241,6 +241,7 @@ So, as we see we would make the most money if we would just everything in Nividi
 plot(opt_port, chart.assets=TRUE, main="Maximum Return", 
       xlim=c(0,0.3), ylim=c(0,0.5))
 ```
+
 ```{r Risk Reward trade of}
 chart.RiskReward(opt_port,return.col="mean", risk.col="sd",
                  chart.assets=TRUE, 
@@ -260,7 +261,9 @@ The efficient frontier is the set of optimal portfolios that offer the highest e
 port_tan <- portfolio.spec(assets=stock_names) %>%
   add.constraint(type="full_investment") %>%
   add.constraint(type = "long_only") %>%
-  add.objective(type="return", name="mean")
+  add.constraint(type="weight_sum", min_sum=1, max_sum=1) %>%
+  add.objective(type="return", name="mean") %>%
+  add.objective(type="risk", name="StdDev")
 port_tan
 ```
 
@@ -270,6 +273,7 @@ init.portf <- add.constraint(portfolio=init.portf, type="full_investment")
 init.portf <- add.constraint(portfolio=init.portf, type="long_only")
 init.portf <- add.objective(portfolio=init.portf, type="return", name="mean")
 init.portf <- add.objective(portfolio=init.portf, type="risk", name="StdDev")
+init.portf <- add.constraint(portfolio=init.portf, type="weight_sum", min_sum=1, max_sum=1)
 init.portf
 ```
 Maximizing the Sharpe Ratio can be formulated as a quadratic programming problem and solved very quickly using optimize_method="ROI". Although "StdDev" was specified as an objective, the quadratic programming problem uses the variance-covariance matrix in the objective function.
@@ -277,23 +281,25 @@ Maximizing the Sharpe Ratio can be formulated as a quadratic programming problem
 The default actin if "mean" and "StdDev" are specified as objectives with optimize_method="ROI" is to maximize quadratic utility. If we want to maximize Sharpe Ratio, we need to pass in maxSR=TRUE to optimize the portfolio, which should lead us to the tangency portfolio.
 
 ```{r }
-maxSR.lo.ROI <- optimize.portfolio(R=stock_returns_xts, portfolio=init.portf, optimize_methode="ROI", maxSR=TRUE, trace=TRUE, search_size= 1000000)
+maxSR.lo.ROI <- optimize.portfolio(R=stock_returns_xts, portfolio=init.portf, optimize_methode="ROI", maxSR=TRUE, trace=TRUE)
 maxSR.lo.ROI
 ```
-It needed 17 Iterations to come as close as possible to the tangeny portfolio.
 We would put a big stake into Walmart, Exxon-Mobil, Disney.
 Although the maximum Sharpe Ratio objective can be solved quickly and accurately with optimize_method="ROI", it is also possible or DEoptim. These solvers have the added flexibility of using different methods to calculate the Sharpe Ratio (e.g. we could specify annualized measures of risk and return).
 
-```{r Use random portfolios to run the optimization}
-maxSR.lo.RP <- optimize.portfolio(R=stock_returns_xts, portfolio=init.portf, optimize_method="random", search_size=1000000, trace=TRUE)
-maxSR.lo.RP
-chart.RiskReward(maxSR.lo.RP, risk.col="StdDev", return.col="mean")
-maxSR.lo.DE <- optimize.portfolio(R=stock_returns_xts, portfolio=init.portf, optimize_method="DEoptim", search_size=1000000, trace=TRUE)
-maxSR.lo.DE
-chart.RiskReward(maxSR.lo.DE, risk.col="StdDev", return.col="mean")
+Create return objective, risk aversion objective and combine
+```{r}
+ret_obj <- return_objective(name="mean")
+var_obj <- portfolio_risk_objective(name="var")
+ob_re_var <- list(ret_obj, var_obj)
+ob_re_var
 ```
 
-The Minmimum Variance Portfolio minimizing the variance of the portfolio
+```{r Looked at the weights}
+re_wts_tan <-c(na.omit(extractWeights(re_tan_port)))
+```
+
+The __Minmimum Variance Portfolio__ minimizing the variance of the portfolio
 
 ```{r Minimum Variance}
 port_minvar <- portfolio.spec(assets=stock_names) %>%
@@ -305,7 +311,7 @@ port_minvar
 
 ```{r}
 opt_minvar <- optimize.portfolio(R = stock_returns_xts,portfolio = port_minvar,
-                              optimize_method = "ROI", trace = TRUE, search_size= 1000000)
+                              optimize_method = "ROI", trace = TRUE)
 opt_minvar
 ```
 
@@ -319,27 +325,10 @@ chart.RiskReward(opt_minvar,return.col="mean", risk.col="sd",
 ```
 
 ```{r Weight setting for the Portfolios}
-wts_tan <- c(0.104, 0.002, 0.120, 0.002, 0.444, 0.006, 0.026, 0.000, 0.094, 0.202)
-wts_minvar <- c(0.0241, 0.0000, 0.0615, 0.0000, 0.4551, 0.0000, 0.0000, 0.0000, 0.1094, 0.3499)# Weights from the Minimum Variance Portfolio
+wts_tan <- c(extractWeights(object = maxSR.lo.ROI))
+wts_minvar <- c(extractWeights(object =opt_minvar))
 ```
 
-Portfolio Returns
-```{r}
-stock_returns
-
-tan_port <- stock_returns %>%
-    tq_portfolio(assets_col  = symbol, 
-                 returns_col = monthly.returns, 
-                 weights     = wts_tan, 
-                 col_rename  = "Return")
-tan_port
-minvar_port <- stock_returns %>%
-    tq_portfolio(assets_col  = symbol, 
-                 returns_col = monthly.returns, 
-                 weights     = wts_minvar, 
-                 col_rename  = "Return")
-minvar_port
-```
 For this task we take the SP500 as the benchmark.
 ```{r SP500}
 bench_returns <- "^GSPC" %>%
@@ -352,55 +341,74 @@ bench_returns <- "^GSPC" %>%
                  col_rename = "Benchmark")
 bench_returns
 ```
-```{r Merging the data together}
-ov_tan_port <- left_join(tan_port,bench_returns,by = "date")
-ov_minvar_port <- left_join(minvar_port,bench_returns,by = "date")
+```{r Rebalanced Returns Tangency Portfolio}
+tangency_returns <- PerformanceAnalytics::Return.portfolio(R=stock_returns_xts,
+                                       weights = extractWeights(maxSR.lo.ROI),
+                                       wealth.index = FALSE,
+                                       geometric = TRUE,
+                                       rebalance_on = "months",
+                                       contribution = TRUE)
+tangency_returns
+dates <- bench_returns$date
+tangency_returns <- rbind(tangency_returns$portfolio.returns)
 
+try <- 100*(1+tangency_returns$portfolio.returns)
+dicount <- try*((1+tangency_returns$portfolio.returns) ^ nrow(tangency_returns))
+sum(dicount)
+```
+
+```{r Rebalanced Returns Minimum Variance Portfolio}
+minvar_returns <- PerformanceAnalytics::Return.portfolio(R=stock_returns_xts,
+                                                         weights=wts_minvar,
+                                                         wealth.index= FALSE,
+                                                         geometric=TRUE,
+                                                         rebalance_on= "months",
+                                                         contribution=TRUE)
+```
+
+
+```{r Merging the data together}
+tan <- as.data.frame(tangency_returns)
+minvar <- as.data.frame(minvar_returns)
+ov_tan_port <- cbind(tan,bench_returns)
+ov_minvar_port <- cbind(minvar,bench_returns)
+RF <- 0
 ov_tan_port
 ov_minvar_port
 ```
+
 ```{r Overview for the Tangency Portfolio}
-ov_tan_port %>%
-    tq_performance(Ra = Return, Rb = Benchmark, 
+cap_tan <-ov_tan_port %>%
+    tq_performance(Ra = portfolio.returns, Rb = Benchmark, 
     performance_fun = table.CAPM)
+cap_tan
 ```
 
 ```{r Overview for the Minimum Variance}
-ov_minvar_port %>%
-    tq_performance(Ra = Return, Rb = Benchmark, 
+cap_minvar <- ov_minvar_port %>%
+    tq_performance(Ra = portfolio.returns, Rb = Benchmark, 
     performance_fun = table.CAPM)
+cap_minvar
 ```
 
 ```{r Sharpe Ratio}
-sharp_tan <- (0.1112-0)/sd(ov_tan_port$Return)
-sharp_minvar <- (0.0605-0)/sd(ov_minvar_port$Return)
+sharp_tan <- (cap_tan$AnnualizedAlpha-RF)/sd(ov_tan_port$portfolio.returns)
+sharp_minvar <- (cap_minvar$AnnualizedAlpha-RF)/sd(ov_minvar_port$portfolio.returns)
 sharp_bench <- 1 #Checked it on the internet on an average base it is close to 1
 ov_sharp <- cbind(sharp_tan, sharp_minvar, sharp_bench)
 ov_sharp
 ```
 
-
-```{r Mean calc}
-tan_r <- geometric.mean(ov_tan_port$Return)
-minvar_r <- geometric.mean(ov_minvar_port$Return)
-bench_r <- geometric.mean(ov_minvar_port$Benchmark)
-```
-
 ```{r Future Value}
-FV_tan <- FV(rate = tan_r, nper = 1:239,pv = 100,pmt = -100,type = 1)
-FV_minvar <- FV(rate = minvar_r, nper = 1:239, pv = 100, pmt = -100, type=1)
-FV_bench <- FV(rate=bench_r, nper = 1:239, pv = 100, pmt = -100, type = 1)
-id <- c(1:239)
-as.data.frame(FV_tan)
-as.data.frame(id)
-as.data.frame(FV_minvar)
-as.data.frame(FV_bench)
+FV_tan <- fv(r = tan$portfolio.returns, n = 1:251, pv = 0,pmt = -try,type = 0)
+FV_minvar <- FV(rate = minvar$portfolio.returns, nper = 1:251, pv = 100, pmt = -100, type=0)
+FV_bench <- FV(rate=bench_returns$Benchmark, nper = 1:251, pv = 100, pmt = -100, type = 0)
+id <- c(1:251)
 ov_list <- cbind(id, FV_tan,FV_minvar,FV_bench)
-ov_list <- as.data.frame(ov_list)
 invest <- ov_list[239,]
 invest
+ov_list
 ```
-
 
 ```{r Ploting the wealth development over time}
 ggplot(ov_list, aes(x=id)) + 
@@ -412,9 +420,9 @@ ggplot(ov_list, aes(x=id)) +
 The tangency portfolio performed very good related to the others.
 
 ```{r If we would want to get the same amount of money with a one time investment}
-PV_tan <- PV(rate = tan_r,nper = 1:239,fv =-invest$FV_tan ,pmt = 0,type = 1)
-PV_minvar <- PV(rate =minvar_r, nper=1:239,fv=-invest$FV_minvar,pmt=0,type=1)
-PV_bench <- PV(rate=bench_r, nper=1:239, fv=-invest$FV_bench,pmt=0, type=1)
+PV_tan <- PV(rate = tan$portfolio.returns,nper = 1:239,fv =-invest$FV_tan ,pmt = 0,type = 1)
+PV_minvar <- PV(rate =minvar$portfolio.returns, nper=1:239,fv=-invest$FV_minvar,pmt=0,type=1)
+PV_bench <- PV(rate=bench_returns$Benchmark, nper=1:239, fv=-invest$FV_bench,pmt=0, type=1)
 id <- c(1:239)
 as.data.frame(PV_tan)
 as.data.frame(id)
