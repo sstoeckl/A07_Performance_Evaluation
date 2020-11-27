@@ -10,6 +10,8 @@ output: html_notebook
 pacman::p_load(tidyverse,tidyquant,FFdownload,FactorAnalytics,PerformanceAnalytics)
 install.packages("psych")          # Install psych package
 library("psych")                   # Load psych package
+install.packages("writexl")
+library(writexl)
 ```
 
 **Please** remember to put your assignment solutions in `rmd` format using **many** chunks and putting readable text in between, similar to my examples given in Research Methods and Assignment 1!
@@ -343,18 +345,14 @@ bench_returns
 ```
 ```{r Rebalanced Returns Tangency Portfolio}
 tangency_returns <- PerformanceAnalytics::Return.portfolio(R=stock_returns_xts,
-                                       weights = extractWeights(maxSR.lo.ROI),
                                        wealth.index = FALSE,
                                        geometric = TRUE,
                                        rebalance_on = "months",
-                                       contribution = TRUE)
+                                       contribution = FALSE,
+                                       maxSR=TRUE)
 tangency_returns
 dates <- bench_returns$date
 tangency_returns <- rbind(tangency_returns$portfolio.returns)
-
-try <- 100*(1+tangency_returns$portfolio.returns)
-dicount <- try*((1+tangency_returns$portfolio.returns) ^ nrow(tangency_returns))
-sum(dicount)
 ```
 
 ```{r Rebalanced Returns Minimum Variance Portfolio}
@@ -400,15 +398,19 @@ ov_sharp
 ```
 
 ```{r Future Value}
-FV_tan <- fv(r = tan$portfolio.returns, n = 1:251, pv = 0,pmt = -try,type = 0)
-FV_minvar <- FV(rate = minvar$portfolio.returns, nper = 1:251, pv = 100, pmt = -100, type=0)
-FV_bench <- FV(rate=bench_returns$Benchmark, nper = 1:251, pv = 100, pmt = -100, type = 0)
+library(readxl)
+return_calculation <- read_excel("return_calculation.xlsx")
+FV_tan <- return_calculation$cum_tan
+FV_minvar <- return_calculation$cum_minvar
+FV_bench <- return_calculation$cum_bench
 id <- c(1:251)
 ov_list <- cbind(id, FV_tan,FV_minvar,FV_bench)
-invest <- ov_list[239,]
+ov_list <- dplyr::as_data_frame(ov_list)
+invest <- ov_list[251,]
 invest
-ov_list
 ```
+
+As we see the tangency portfolio, would have the highest return compared to the MinVariance and the benchmark portfolio.
 
 ```{r Ploting the wealth development over time}
 ggplot(ov_list, aes(x=id)) + 
@@ -420,20 +422,20 @@ ggplot(ov_list, aes(x=id)) +
 The tangency portfolio performed very good related to the others.
 
 ```{r If we would want to get the same amount of money with a one time investment}
-PV_tan <- PV(rate = tan$portfolio.returns,nper = 1:239,fv =-invest$FV_tan ,pmt = 0,type = 1)
-PV_minvar <- PV(rate =minvar$portfolio.returns, nper=1:239,fv=-invest$FV_minvar,pmt=0,type=1)
-PV_bench <- PV(rate=bench_returns$Benchmark, nper=1:239, fv=-invest$FV_bench,pmt=0, type=1)
-id <- c(1:239)
-as.data.frame(PV_tan)
-as.data.frame(id)
-as.data.frame(PV_minvar)
-as.data.frame(PV_bench)
+PV_tan <- return_calculation$tan_one
+PV_minvar <- return_calculation$minvar_one
+PV_bench <- return_calculation$bench_one
+PV_tan <- as.data.frame(PV_tan)
+PV_minvar <- as.data.frame(PV_minvar)
+PV_bench <- as.data.frame(PV_bench)
+id <- c(1:nrow(PV_tan))
+id <- as.data.frame(id)
 ov_list <- cbind(id, PV_tan,PV_minvar,PV_bench)
 ov_list <- as.data.frame(ov_list)
-invest <- ov_list[239,]
+invest <- ov_list[nrow(ov_list),]
 invest
 ```
-As we see if we would like to make an one time investment, but also the exact same amount of money as if we would invest 100 dollar per month. For the Tangency Portfolio we would need to invest __2896.20__$ for the Minimium Variance Portfolio we would need to invest __4695.7__$ and for the passive strategy S&P500 we would need __5082.05__. So, as we can see that the intrest of intrest effect takes here part and dramatically increases the future value of our investment.
+As we see if we would like to make an one time investment, but also the exact same amount of money as if we would invest 100 dollar per month. For the Tangency Portfolio we would need to invest __11055,75__$ for the Minimium Variance Portfolio we would need to invest __16048.26__$ and for the passive strategy S&P500 we would need __25494.39__. So, as we can see that the interest of interest effect takes here part and dramatically increases the future value of our investment.
 
 ```{r}
 ggplot(ov_list, aes(x=id)) + 
@@ -448,7 +450,7 @@ ggplot(ov_list, aes(x=id)) +
 
 ## Exercise 3: Performance Evaluation II
 
-For the same two portfolios and the appropriate benchmark calculate overall performance measures (Sharpe ratio, M2 [assume a risk-fre rate of 0], Treynor Ratio, Jensen's Alpha and Information ratio). Interpret. Additional do the two market timing regressions (ch 24.4) and see whether your portfolios can "time" the market.
+For the same two portfolios and the appropriate benchmark calculate overall performance measures (Sharpe ratio, M2 [assume a risk-free rate of 0], Treynor Ratio, Jensen's Alpha and Information ratio). Interpret. Additional do the two market timing regressions (ch 24.4) and see whether your portfolios can "time" the market.
 
 For the Evaluation check the solution in excercise 2 there you can find the CAPM Table, which shows us the Sharpe Ratio, Treynor Ratio, Alpha and the Information Ratio.
 
@@ -456,8 +458,8 @@ Timing Regressions Treynor and Mazuy = __TM__
 ```{r Timing Regressions}
 ts_ov_tan_port <- ts(ov_tan_port)
 ts_ov_minvar_port <- ts(ov_minvar_port)
-MarketTiming(Ra = ts_ov_tan_port[,2],Rb = ts_ov_tan_port[,3],Rf = 0,method = "TM")
-MarketTiming(Ra = ts_ov_minvar_port[,2],Rb = ts_ov_minvar_port[,3],Rf = 0,method = "TM")
+MarketTiming(Ra = ts_ov_tan_port[,1],Rb = ts_ov_tan_port[,3],Rf = 0,method = "TM")
+MarketTiming(Ra = ts_ov_minvar_port[,1],Rb = ts_ov_minvar_port[,13],Rf = 0,method = "TM")
 ```
 If the gamma coefficient in the regression is positive, then the estimated equation describes a convex upward-sloping regression "line". Gamma is a measure of the curvature of the regression line. If gamma is positive as the Tangency Portfolio clearly is it indicates that the manager's investment strategy demonstrates market timing ability.
 
