@@ -1,8 +1,11 @@
 ---
 title: "Portfoliomanagement and Financial Analysis - Assignment 7"
-subtitle: "Submit until Monday 2020-11-23, 13:00"
 author: "Köffel, Fabian"
-output: html_notebook
+subtitle: Submit until Monday 2020-11-23, 13:00
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
 ---
   
 ```{r setup}
